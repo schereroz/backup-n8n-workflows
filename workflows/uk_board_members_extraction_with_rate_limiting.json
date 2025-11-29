@@ -1,0 +1,651 @@
+{
+  "updatedAt": "2025-10-14T14:01:46.000Z",
+  "createdAt": "2025-10-13T02:55:06.874Z",
+  "id": "H3CsDY6qv8jBLGbI",
+  "name": "UK Board Members Extraction with Rate Limiting",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "ba04f44d-0218-4ddc-92ee-e410f1d81461",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2368,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "link_sources",
+        "limit": 3,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "processed",
+              "condition": "eq",
+              "keyValue": "false"
+            }
+          ]
+        }
+      },
+      "id": "b708e434-3fae-4f17-8c0d-943f3315c298",
+      "name": "Get Unprocessed Companies",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -2144,
+        80
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "24f8276d-2b7b-4665-ab49-e3a13a42afd4",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1920,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/extract",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"urls\": [\n    \"https://hsbc.com/who-we-are/our-people/board-of-directors\"\n  ],\n  \"prompt\": \"Extract the full name and role of each board of director.\",\n  \"schema\": {\n    \"type\": \"object\",\n    \"required\": [],\n    \"properties\": {\n      \"board_of_directors\": {\n        \"type\": \"array\",\n        \"items\": {\n          \"type\": \"object\",\n          \"required\": [],\n          \"properties\": {\n            \"full_name\": {\n              \"type\": \"string\"\n            },\n            \"role\": {\n              \"type\": \"string\"\n            }\n          }\n        }\n      }\n    }\n  },\n  \"enableWebSearch\": false\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "e7d007ba-ca19-4a4b-bdce-5d3f39e9229f",
+      "name": "Firecrawl Extract Board Members",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1424,
+        -352
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KT3q4YLLWiIqM1fj",
+          "name": "Header Auth Firecrawl"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "success-condition",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "has-data-condition",
+              "leftValue": "={{ $json.data?.board_members?.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "297e08e9-9495-4fd0-9fcb-e5afec7927cd",
+      "name": "Check Extraction Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1216,
+        -192
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "options": {}
+      },
+      "id": "a63a70ae-9191-465d-abfb-4ef5bb119f1f",
+      "name": "Prepare Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1040,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "board_members",
+        "options": {}
+      },
+      "id": "a435cc16-dbf7-4b1b-b021-d09a05323d79",
+      "name": "Split Board Members",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -832,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "id": "0d97a2b2-4c71-4938-b217-5805a677adfa",
+      "name": "⏱️ Wait Before OpenAI",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -608,
+        -32
+      ],
+      "webhookId": "wait-openai"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are an expert at validating and cleaning board member data. Your task is to:\n1. Validate that the full_name is a real person's name (not company name, empty, or placeholder)\n2. Clean and standardize the role title (e.g., 'Non-Executive Director', 'Chairman', 'CEO')\n3. Ensure the role relates to board member or board of directors\n4. Remove any titles like Mr, Mrs, Dr, etc from the name\n5. Return ONLY valid board members\n\nIf the data is invalid (not a real person or not a board role), return: {\"valid\": false}\nIf valid, return: {\"valid\": true, \"full_name\": \"cleaned name\", \"role\": \"standardized role\"}\n\nRespond ONLY with valid JSON, no other text.",
+              "role": "system"
+            },
+            {
+              "content": "=Validate this board member:\nName: {{ $json.board_members.full_name }}\nRole: {{ $json.board_members.role }}\n\nRespond with JSON only."
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 150,
+          "temperature": 0.1
+        }
+      },
+      "id": "ce05d00e-5b81-4eca-8885-5af0ca210304",
+      "name": "Validate with OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -448,
+        -240
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "mZ3zckH2SlfqcPPK",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse OpenAI response\nconst rawResponse = $input.item.json.message?.content || $input.item.json.response?.text || '{\"valid\": false}';\n\n// Clean response (remove markdown code blocks if present)\nconst cleanResponse = rawResponse.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\nlet validated;\ntry {\n  validated = JSON.parse(cleanResponse);\n} catch (e) {\n  console.log('Failed to parse OpenAI response:', cleanResponse);\n  validated = { valid: false };\n}\n\n// If valid, prepare for database insert\nif (validated.valid === true) {\n  return {\n    json: {\n      company_number: $('Split Board Members').item.json.company_number,\n      company_name: $('Split Board Members').item.json.company_name,\n      type: 'board member',\n      full_name: validated.full_name || $('Split Board Members').item.json.board_members.full_name,\n      role: validated.role || $('Split Board Members').item.json.board_members.role,\n      url_website_source: $('Split Board Members').item.json.boardUrl,\n      source_id: $('Split Board Members').item.json.source_id\n    }\n  };\n} else {\n  // Skip invalid entries\n  console.log('Skipping invalid board member:', $('Split Board Members').item.json.board_members);\n  return null;\n}"
+      },
+      "id": "feb5e26c-e8f8-4330-9a27-ad2e3179b34b",
+      "name": "Parse and Prepare for DB",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "executives_n8n",
+        "dataToSend": "autoMapInputData"
+      },
+      "id": "d1c4913d-ec1d-4fe0-8ce9-a873cebc7047",
+      "name": "Insert Executive to Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        64,
+        -32
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "last-batch",
+              "leftValue": "={{ $json.lastBatch }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1429a2b6-4248-414c-9242-10444860e5da",
+      "name": "Check if Last Batch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        288,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "link_sources",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse and Prepare for DB').item.json.source_id }}"
+            }
+          ]
+        },
+        "dataToSend": "autoMapInputData"
+      },
+      "id": "0ea15a2f-a804-4ecc-8671-fe93ed6d0e8d",
+      "name": "Mark as Processed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        496,
+        -128
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "link_sources",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Loop Over Items').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "processed",
+              "fieldValue": "true"
+            }
+          ]
+        }
+      },
+      "id": "22d56d09-e27f-4fa9-b080-65963704652e",
+      "name": "Mark Failed as Processed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1040,
+        176
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 🎯 Workflow Overview\n\n**Extração de Board Members - UK Companies**\n\n**Melhorias implementadas:**\n✅ Rate Limiting com Wait nodes\n✅ Processamento em lotes (1 por vez)\n✅ 3s de espera antes do Firecrawl\n✅ 2s de espera antes do OpenAI\n✅ Timeout de 60s para requests\n\n**Fluxo:**\n1. Busca empresas não processadas\n2. Loop com rate limiting\n3. Firecrawl extrai dados\n4. OpenAI valida e limpa\n5. Grava no Supabase\n6. Marca como processado",
+        "height": 420,
+        "width": 380
+      },
+      "id": "ef8a199d-c255-4f8f-b5dc-5a1b92dd1420",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2448,
+        -560
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ⚙️ Rate Limiting\n\n**Configuração atual:**\n- 3 segundos antes de cada Firecrawl call\n- 2 segundos antes de cada OpenAI call\n- Processamento: 1 empresa por vez\n\n**Ajuste conforme necessário:**\n- APIs com rate limit mais restritivo: aumente os tempos\n- APIs generosas: reduza os tempos\n- Volume alto: reduza o batch size",
+        "height": 300,
+        "width": 360
+      },
+      "id": "b8352e54-cba2-440e-827e-5e38553fff30",
+      "name": "Sticky Note 2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1872,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📊 Estatísticas\n\n**Performance estimada:**\n- Tempo por empresa: ~10-15s\n- 10 empresas: ~2-3 minutos\n- 100 empresas: ~20-30 minutos\n\n**Custos estimados (por empresa):**\n- Firecrawl: varia conforme plano\n- OpenAI: ~$0.001-0.005 (GPT-4o-mini)\n\n**Recomendação:**\nComece com 5-10 empresas para testar",
+        "height": 320,
+        "width": 360
+      },
+      "id": "c9d36372-2393-4ea1-a137-7006e8f19cf0",
+      "name": "Sticky Note 3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        128,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "extract",
+        "urls": {
+          "items": [
+            {
+              "url": "={{ $json.boardUrl }}"
+            }
+          ]
+        },
+        "prompt": "Extract the full name and role of each board of director.",
+        "schema": "{\n  \"type\": \"object\",\n  \"required\": [],\n  \"properties\": {\n    \"board_of_directors\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"required\": [],\n        \"properties\": {\n          \"full_name\": {\n            \"type\": \"string\"\n          },\n          \"role\": {\n            \"type\": \"string\"\n          }\n        }\n      }\n    }\n  }\n}",
+        "requestOptions": {}
+      },
+      "type": "@mendable/n8n-nodes-firecrawl.firecrawl",
+      "typeVersion": 1,
+      "position": [
+        -1600,
+        -144
+      ],
+      "id": "ed1b026f-af05-4064-aab8-6ceed018bb9f",
+      "name": "Extract Data",
+      "credentials": {
+        "firecrawlApi": {
+          "id": "XgAVUiMfrML7zjVX",
+          "name": "Firecrawl account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-mcp.mcpClient",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        496
+      ],
+      "id": "cf2b0fdd-5a3e-434f-8f69-65738b836450",
+      "name": "MCP Client",
+      "credentials": {
+        "mcpClientApi": {
+          "id": "5kzUNrrBXasukqnC",
+          "name": "Firecrawl MCP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeTool"
+      },
+      "type": "n8n-nodes-mcp.mcpClient",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        352
+      ],
+      "id": "f4e620a9-2c20-4c32-b6ce-3473d694ff58",
+      "name": "MCP Client1",
+      "credentials": {
+        "mcpClientApi": {
+          "id": "5kzUNrrBXasukqnC",
+          "name": "Firecrawl MCP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Unprocessed Companies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unprocessed Companies": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Extract Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firecrawl Extract Board Members": {
+      "main": [
+        []
+      ]
+    },
+    "Check Extraction Success": {
+      "main": [
+        [
+          {
+            "node": "Mark Failed as Processed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Data": {
+      "main": [
+        [
+          {
+            "node": "Split Board Members",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Board Members": {
+      "main": [
+        [
+          {
+            "node": "⏱️ Wait Before OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏱️ Wait Before OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Validate with OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate with OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Parse and Prepare for DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse and Prepare for DB": {
+      "main": [
+        [
+          {
+            "node": "Insert Executive to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Executive to Supabase": {
+      "main": [
+        [
+          {
+            "node": "Check if Last Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Last Batch": {
+      "main": [
+        [
+          {
+            "node": "Mark as Processed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Failed as Processed": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Client": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "de707d22-8606-4e75-a64c-d9534cf768b5",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-13T02:55:06.883Z",
+      "createdAt": "2025-10-13T02:55:06.883Z",
+      "role": "workflow:owner",
+      "workflowId": "H3CsDY6qv8jBLGbI",
+      "projectId": "yy9eTOMcWs4nkB5T"
+    }
+  ],
+  "tags": []
+}
