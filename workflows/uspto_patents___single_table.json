@@ -1,0 +1,381 @@
+{
+  "updatedAt": "2025-11-29T17:28:49.000Z",
+  "createdAt": "2025-11-29T17:28:49.765Z",
+  "id": "Adp44yWCsnLgc7Io",
+  "name": "USPTO Patents - Single Table",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "32f270da-d1dc-41a5-bbaf-6d1a116e7da7",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1712,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Define as empresas e variações diretamente aqui\n// Você pode modificar esta lista conforme necessário\n\nconst companies = [\n  {\n    company_name: 'Gladly',\n    company_name_variations: ['Gladly Inc', 'Gladly Software Inc', 'Gladly, Inc.']\n  },\n  \n];\n\nreturn companies.map(company => ({ json: company }));"
+      },
+      "id": "99807287-e9ec-464a-adc4-b6908b8aaa4c",
+      "name": "Set Companies List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1536,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "3efab7bc-44c5-439d-a37a-77c148266862",
+      "name": "Loop Over Companies",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1312,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\n// Usa variações se existirem, senão usa apenas o nome principal\nlet searchNames = item.company_name_variations || [item.company_name];\n\nconsole.log(`\\n${'='.repeat(60)}`);\nconsole.log(`🔍 Empresa: ${item.company_name}`);\nconsole.log(`📝 Buscando por: ${searchNames.join(', ')}`);\nconsole.log('='.repeat(60));\n\nreturn [{\n  json: {\n    ...item,\n    search_names: searchNames\n  }\n}];"
+      },
+      "id": "ea96c07e-2b65-4ca6-b297-495888eaf945",
+      "name": "Prepare Search Names",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1072,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.uspto.gov/api/v1/patent/applications/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "uatzrsazlgkgkosgcesvkjzoijzgwo"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "=json",
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "jsonBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "4feceb73-2d0e-4a31-a97a-deb0950a44d5",
+      "name": "USPTO API Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -656,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allInputs = $input.all();\n\n// Tenta pegar o nome da empresa de qualquer lugar possível\nconst companyInput = allInputs.find(input => input.json.company_name);\nconst defaultCompanyName = companyInput?.json.company_name || 'Unknown Company';\n\nconst apiInput = allInputs.find(input => input.json.patentFileWrapperDataBag);\n\nif (!apiInput) return [];\n\nconst patents = apiInput.json.patentFileWrapperDataBag || [];\n\nif (patents.length === 0) return [];\n\n// Mapeia cada patente garantindo que o nome da empresa vá junto\nconst results = patents.map((app) => {\n  const metadata = app.applicationMetaData || {};\n  \n  // Limpeza CPC\n  let cpcString = null;\n  if (metadata.cpcClassificationBag && Array.isArray(metadata.cpcClassificationBag)) {\n    const cleanCodes = metadata.cpcClassificationBag\n      .map(code => code ? code.trim().replace(/\\s+/g, ' ') : null)\n      .filter(code => code);\n    if (cleanCodes.length > 0) cpcString = cleanCodes.join(', '); \n  }\n\n  // Limpeza Variações (Null se vazio)\n  let companyVariations = null;\n  const rawVariations = companyInput?.json.company_name_variations;\n  if (Array.isArray(rawVariations) && rawVariations.length > 0) {\n      // Formato PostgreSQL array: {\"A\",\"B\"}\n      const formattedVars = rawVariations.map(v => `\"${v.toString().replace(/\"/g, '\\\\\"')}\"`);\n      companyVariations = `{${formattedVars.join(',')}}`;\n  }\n\n  return {\n    // --- CAMPOS OBRIGATÓRIOS ---\n    company_name: defaultCompanyName, // Força o nome em TODAS as linhas\n    application_number: metadata.applicationNumberText || metadata.applicationNumber,\n    \n    // --- CAMPOS OPCIONAIS (NULL SE VAZIO) ---\n    company_name_variations: companyVariations,\n    patent_number: metadata.patentNumber || null,\n    applicant_name: metadata.firstApplicantName || null,\n    customer_number: metadata.customerNumber ? String(metadata.customerNumber) : null,\n    invention_title: metadata.inventionTitle || 'Untitled',\n    cpc_classifications: cpcString,\n    application_type: metadata.applicationTypeLabelName || 'Utility',\n    \n    // Datas (Null se não existir)\n    effective_filing_date: metadata.filingDate || null,\n    grant_date: metadata.grantDate || metadata.patentGrantDate || null\n  };\n});\n\nreturn results;"
+      },
+      "id": "1545b71e-d046-428a-8d3f-df0acb2ec6ee",
+      "name": "Transform Patent Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.no_patents_found }}",
+              "value2": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0b5886f4-63ad-4f91-8e31-98ba6659d289",
+      "name": "Check If Patents Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "patents",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "company_name",
+              "fieldValue": "={{ $('Prepare Search Names').item.json.company_name }}"
+            },
+            {
+              "fieldId": "company_name_variations",
+              "fieldValue": "={{ $('Prepare Search Names').item.json.company_name_variations }}"
+            },
+            {
+              "fieldId": "patent_number",
+              "fieldValue": "={{ $json.patent_number }}"
+            },
+            {
+              "fieldId": "applicant_name",
+              "fieldValue": "={{ $json.applicant_name }}"
+            },
+            {
+              "fieldId": "customer_number",
+              "fieldValue": "={{ $json.customer_number }}"
+            },
+            {
+              "fieldId": "invention_title",
+              "fieldValue": "={{ $json.invention_title }}"
+            },
+            {
+              "fieldId": "cpc_classifications",
+              "fieldValue": "={{ $json.cpc_classifications }}"
+            },
+            {
+              "fieldId": "application_type",
+              "fieldValue": "={{ $json.application_type }}"
+            },
+            {
+              "fieldId": "effective_filing_date",
+              "fieldValue": "={{ $json.effective_filing_date }}"
+            },
+            {
+              "fieldId": "grant_date",
+              "fieldValue": "={{ $json.grant_date }}"
+            }
+          ]
+        }
+      },
+      "id": "60c8b13e-888a-4eea-bed1-9db2855ea818",
+      "name": "Supabase - Insert Patents",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "id": "33091503-d3e1-41b4-a9a8-f99feb756932",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        128
+      ],
+      "webhookId": "wait-webhook"
+    },
+    {
+      "parameters": {},
+      "id": "a0d3aba4-c77a-4f21-87cc-6fe579675ea4",
+      "name": "Merge Back",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        176,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"filters\": [\n    {\n      \"name\": \"applicationMetaData.cpcClassificationBag\",\n      \"value\": [\n        \"G06N*\", \"G06F40*\", \"G06F18*\", \"G06V*\", \"G10L*\", \"G06K9*\",\n        \"G06Q10*\", \"G06Q30*\", \"G06Q40*\", \"G06Q50*\", \"G05B13*\", \"G05D1*\",\n        \"B25J9*\", \"B60W*\", \"B62D15*\", \"A61B5*\", \"G16H*\", \"G06F21/5*\",\n        \"H04L63/14*\", \"G06F11/07*\", \"G06T*\", \"H04N19*\", \"G01N33*\",\n        \"G16B*\", \"G16C*\", \"A63F13*\", \"G06F9/50*\", \"G06F17/16*\",\n        \"H04L41*\", \"G06F16/95*\"\n      ]\n    },\n    {\n      \"name\": \"applicationMetaData.applicantBag.applicantNameText\",\n      \"value\": {{ $json.search_names }}\n    },\n    {\n      \"name\": \"applicationMetaData.applicationTypeLabelName\",\n      \"value\": [\"Utility\"]\n    }\n  ],\n  \"rangeFilters\": [\n    {\n      \"field\": \"applicationMetaData.filingDate\",\n      \"valueFrom\": \"2020-01-01\",\n      \"valueTo\": \"2025-11-28\"\n    }\n  ],\n  \"pagination\": {\n    \"offset\": 0,\n    \"limit\": 100\n  },\n  \"sort\": [\n    {\n      \"field\": \"applicationMetaData.filingDate\",\n      \"order\": \"Desc\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -864,
+        48
+      ],
+      "id": "83825abe-6178-45da-b14b-c01b11b70300",
+      "name": "Edit Fields"
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Set Companies List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Companies List": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Companies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Companies": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Prepare Search Names",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Search Names": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "USPTO API Request": {
+      "main": [
+        [
+          {
+            "node": "Transform Patent Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Patent Data": {
+      "main": [
+        [
+          {
+            "node": "Check If Patents Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Patents Found": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Insert Patents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Insert Patents": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Companies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Back": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Companies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "USPTO API Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "4df565ee-11f9-4d99-9098-a8efa581dae3",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-11-29T17:28:49.773Z",
+      "createdAt": "2025-11-29T17:28:49.773Z",
+      "role": "workflow:owner",
+      "workflowId": "Adp44yWCsnLgc7Io",
+      "projectId": "yy9eTOMcWs4nkB5T"
+    }
+  ],
+  "tags": []
+}
