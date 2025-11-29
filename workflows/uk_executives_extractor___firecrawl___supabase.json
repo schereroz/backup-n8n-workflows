@@ -1,0 +1,639 @@
+{
+  "updatedAt": "2025-10-12T02:30:43.000Z",
+  "createdAt": "2025-10-11T20:33:11.783Z",
+  "id": "UOWNaxFsrggdIL3A",
+  "name": "UK Executives Extractor - Firecrawl + Supabase",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "684b5563-c921-4254-9930-2bcb67cf557a",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/link_sources",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "processed",
+              "value": "eq.false"
+            },
+            {
+              "name": "select",
+              "value": "*"
+            },
+            {
+              "name": "limit",
+              "value": "50"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "6840d576-0a62-43dc-b6b8-d936d68034bb",
+      "name": "Supabase - Get Unprocessed Companies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -672,
+        16
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      },
+      "notes": "Busca empresas ainda não processadas (processed=false)"
+    },
+    {
+      "parameters": {
+        "batchSize": 2,
+        "options": {}
+      },
+      "id": "655779f2-058e-4f12-884c-ca03e15867b6",
+      "name": "Split in Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -448,
+        16
+      ],
+      "notesInFlow": true,
+      "notes": "Processa 3 empresas por vez para evitar rate limits"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/scrape",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "68722363-2ad5-4cd5-88b0-879562fb73a1",
+      "name": "Firecrawl - Board Members",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -224,
+        -96
+      ],
+      "notesInFlow": true,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "XRRRzTemk2ZUQJEH",
+          "name": "Header Auth account 3"
+        }
+      },
+      "continueOnFail": true,
+      "notes": "Scraping da página de Board Members"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/scrape",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "ac85cefa-4d20-4b92-9013-ba7555805f02",
+      "name": "Firecrawl - Top Management",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -224,
+        112
+      ],
+      "notesInFlow": true,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "XRRRzTemk2ZUQJEH",
+          "name": "Header Auth account 3"
+        }
+      },
+      "continueOnFail": true,
+      "notes": "Scraping da página de Top Management"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrair markdown do response Firecrawl - Board Members\nconst response = $input.first().json;\nlet markdown = '';\n\n// Firecrawl pode retornar em diferentes estruturas\nif (response.data && response.data.markdown) {\n  markdown = response.data.markdown;\n} else if (response.markdown) {\n  markdown = response.markdown;\n} else if (response.content) {\n  markdown = response.content;\n}\n\n// Pegar dados da empresa do batch\nconst companyData = $('Split in Batches').item.json;\n\nreturn [{\n  json: {\n    markdown: markdown,\n    url: companyData.board_member_link,\n    company_number: companyData.company_number,\n    company_name: companyData.company_name,\n    company_id: companyData.id,\n    type: 'board',\n    source_type: 'board_member',\n    scraped_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "80612b46-85e0-4160-9569-e1b927682bec",
+      "name": "Code - Extract Board Markdown",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -96
+      ],
+      "notesInFlow": true,
+      "notes": "Extrai markdown e adiciona metadata"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrair markdown do response Firecrawl - Top Management\nconst response = $input.first().json;\nlet markdown = '';\n\nif (response.data && response.data.markdown) {\n  markdown = response.data.markdown;\n} else if (response.markdown) {\n  markdown = response.markdown;\n} else if (response.content) {\n  markdown = response.content;\n}\n\nconst companyData = $('Split in Batches').item.json;\n\nreturn [{\n  json: {\n    markdown: markdown,\n    url: companyData.top_management_link,\n    company_number: companyData.company_number,\n    company_name: companyData.company_name,\n    company_id: companyData.id,\n    type: 'management',\n    source_type: 'top_management',\n    scraped_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "fbe190e5-3976-4ead-bbb4-247feddd1c04",
+      "name": "Code - Extract Management Markdown",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        112
+      ],
+      "notesInFlow": true,
+      "notes": "Extrai markdown e adiciona metadata"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "options": {}
+      },
+      "id": "d5da9a37-f016-4430-a666-3857d8defe70",
+      "name": "Merge Board + Management",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        224,
+        16
+      ],
+      "notesInFlow": true,
+      "notes": "Combina resultados das duas páginas"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.markdown }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "executives",
+              "type": "array",
+              "description": "Array of all executives found in the text. Extract every senior executive, board member, or director mentioned."
+            },
+            {
+              "name": "full_name",
+              "description": "Complete full name including titles (Sir, Dame, Dr, Professor) and suffixes (CBE, OBE, FCA, etc). Examples: 'Sir David Lewis', 'Dame Emma Walmsley CBE', 'Dr. John Smith FCA'"
+            },
+            {
+              "name": "role",
+              "description": "Official job title or position. Be specific. Examples: 'Chief Executive Officer', 'Chief Financial Officer', 'Non-Executive Director', 'Chairman', 'Managing Director UK & Ireland', 'Group Chief Operating Officer'"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "324184e7-cc7f-4f59-bbe1-6fa72f19968f",
+      "name": "AI - Extract Executives",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        384,
+        -128
+      ],
+      "notesInFlow": true,
+      "notes": "IA extrai nomes e cargos com alta precisão"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Estruturar dados para inserção no Supabase\nconst items = $input.all();\nconst output = [];\n\nfor (const item of items) {\n  const executives = item.json.executives || [];\n  const companyNumber = item.json.company_number;\n  const companyName = item.json.company_name;\n  const companyId = item.json.company_id;\n  const url = item.json.url;\n  const sourceType = item.json.source_type;\n  \n  // Determinar tipo baseado na fonte\n  const type = sourceType === 'board_member' ? 'board member' : 'top management';\n  \n  for (const exec of executives) {\n    // Validações rigorosas\n    if (!exec.full_name || exec.full_name.trim() === '') continue;\n    if (!exec.role || exec.role.trim() === '') continue;\n    \n    // Limpar dados\n    const fullName = exec.full_name.trim();\n    const role = exec.role.trim();\n    \n    // Evitar duplicatas óbvias no mesmo batch\n    const isDuplicate = output.some(existing => \n      existing.json.company_number === companyNumber &&\n      existing.json.full_name.toLowerCase() === fullName.toLowerCase() &&\n      existing.json.role.toLowerCase() === role.toLowerCase()\n    );\n    \n    if (isDuplicate) continue;\n    \n    output.push({\n      json: {\n        company_number: companyNumber,\n        company_name: companyName,\n        type: type,\n        full_name: fullName,\n        role: role,\n        url_website_source: url,\n        extracted_at: new Date().toISOString(),\n        source_company_id: companyId\n      }\n    });\n  }\n}\n\n// Logging para debug\nconsole.log(`Extracted ${output.length} executives from ${items.length} pages`);\n\nreturn output.length > 0 ? output : [{ json: { _skip: true } }];"
+      },
+      "id": "fc99440d-b5a5-4db8-961f-9032a127cc66",
+      "name": "Code - Structure Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        656,
+        16
+      ],
+      "notesInFlow": true,
+      "notes": "Estrutura dados, valida e remove duplicatas"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "filter-1",
+              "leftValue": "={{ $json._skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEqual"
+              }
+            },
+            {
+              "id": "filter-2",
+              "leftValue": "={{ $json.full_name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c84526b4-4f79-464a-ba4a-8c58800afe07",
+      "name": "Filter - Valid Results Only",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [
+        880,
+        16
+      ],
+      "notesInFlow": true,
+      "notes": "Remove resultados vazios ou inválidos"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/executives_n8n",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "id": "28121954-fb89-42fc-b352-5b104186f795",
+      "name": "Supabase - Insert Executives",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1104,
+        16
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      },
+      "continueOnFail": true,
+      "notes": "Insere executivos extraídos no Supabase"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/link_sources",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $('Split in Batches').item.json.id }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "id": "e4993932-e416-4b03-9f4b-50d1a622bf08",
+      "name": "Supabase - Mark as Processed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1328,
+        16
+      ],
+      "notesInFlow": true,
+      "executeOnce": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      },
+      "notes": "Marca empresa como processada"
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "id": "f02dc12b-8a24-4af3-9834-52b83432441d",
+      "name": "Wait - Rate Limiting",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1536,
+        16
+      ],
+      "notesInFlow": true,
+      "webhookId": "69646ec7-50c6-4e91-8627-17b3593e1920",
+      "notes": "Aguarda 3s entre batches (rate limiting)"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Get Unprocessed Companies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Get Unprocessed Companies": {
+      "main": [
+        [
+          {
+            "node": "Split in Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split in Batches": {
+      "main": [
+        [
+          {
+            "node": "Firecrawl - Board Members",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Firecrawl - Top Management",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firecrawl - Board Members": {
+      "main": [
+        [
+          {
+            "node": "Code - Extract Board Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firecrawl - Top Management": {
+      "main": [
+        [
+          {
+            "node": "Code - Extract Management Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Extract Board Markdown": {
+      "main": [
+        [
+          {
+            "node": "Merge Board + Management",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Extract Management Markdown": {
+      "main": [
+        [
+          {
+            "node": "Merge Board + Management",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Board + Management": {
+      "main": [
+        [
+          {
+            "node": "AI - Extract Executives",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI - Extract Executives": {
+      "main": [
+        [
+          {
+            "node": "Code - Structure Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Structure Data": {
+      "main": [
+        [
+          {
+            "node": "Filter - Valid Results Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter - Valid Results Only": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Insert Executives",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Insert Executives": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Mark as Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Mark as Processed": {
+      "main": [
+        [
+          {
+            "node": "Wait - Rate Limiting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait - Rate Limiting": {
+      "main": [
+        [
+          {
+            "node": "Split in Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "a81bc337-009a-4226-ba27-9f591064920b",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-11T20:33:11.791Z",
+      "createdAt": "2025-10-11T20:33:11.791Z",
+      "role": "workflow:owner",
+      "workflowId": "UOWNaxFsrggdIL3A",
+      "projectId": "yy9eTOMcWs4nkB5T"
+    }
+  ],
+  "tags": []
+}
