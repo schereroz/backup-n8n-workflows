@@ -1,0 +1,293 @@
+{
+  "updatedAt": "2025-10-14T14:02:04.000Z",
+  "createdAt": "2025-10-12T19:46:55.978Z",
+  "id": "N6Gf0EmLfcTPnTMp",
+  "name": "Extract Board & Management with OpenAI (Scrape Version)",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "122cacbb-40f7-4bd6-914d-6dea578bc0f1",
+      "name": "When clicking 'Execute workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        176,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "link_sources",
+        "returnAll": true
+      },
+      "id": "d230e842-67e4-4a01-857c-0145acdde690",
+      "name": "Get Companies from Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        400,
+        528
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Em modo \"Run Once for Each Item\", use $input diretamente\nconst company = $input.json;\n\n// Check if board data exists, otherwise use boardUrl from input\nconst boardUrl = company.board?.member?.link ? (company.board.member.link || []).join(' ').trim() : (company.boardUrl || '');\n\n// Log to debug the data structure\nconsole.log('📊 Input data for company:', company.company_name || company.name, JSON.stringify(company, null, 2));\n\n// Log missing board data\nif (!company.board && !company.boardUrl) {\n  console.log('⚠️ No board or boardUrl data for company:', company.company_name || company.name);\n}\n\nconsole.log('🔍 Processando empresa:', company.company_name || company.name);\nconsole.log('📋 Board URL:', boardUrl);\n\n// SEMPRE retorna o objeto\nreturn {\n  json: {\n    company_number: company.company_number || company.number,\n    company_name: company.company_name || company.name,\n    board_url: boardUrl\n  }\n};"
+      },
+      "id": "c29c10d4-0a58-4ed7-8648-fb7d83c83644",
+      "name": "Prepare Extract Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/scrape",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $json.board_url }}\",\n  \"formats\": [\"markdown\"],\n  \"onlyMainContent\": true\n}",
+        "options": {}
+      },
+      "id": "5c42db96-49d9-43aa-b12d-1f0f6a3555ea",
+      "name": "Firecrawl Scrape - Board",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1056,
+        416
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KT3q4YLLWiIqM1fj",
+          "name": "Header Auth account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  \"model\": \"gpt-4o\",\n  \"temperature\": 0,\n  \"messages\": [{\n    \"role\": \"user\",\n    \"content\": \"Você é um especialista em extrair informações estruturadas de páginas web. Retorne APENAS JSON válido.\\n\\n\" + $json.data.markdown\n  }]\n}\n}}",
+        "options": {}
+      },
+      "id": "996a073f-8540-4279-9be3-7d3c5202471a",
+      "name": "AI Extract Board Members",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1280,
+        416
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "mZ3zckH2SlfqcPPK",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Pega os dados da empresa e da IA\nconst prepareData = $('Prepare Extract Data').first().json;\nconst aiResponse = $input.first().json;\n\n// 2. Extrai e limpa o texto JSON da resposta da IA\nlet responseText = aiResponse.choices?.[0]?.message?.content || '';\nresponseText = responseText.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\n// 3. Faz o \"parse\" do texto para um objeto JSON\nlet parsedData;\ntry {\n  parsedData = JSON.parse(responseText);\n} catch (error) {\n  console.error('Erro ao fazer parse do JSON:', error);\n  return [];\n}\n\n// 4. Busca a lista de membros usando a chave correta\nconst members = parsedData.board_of_directors || [];\n\n// 5. Se não encontrar membros, para a execução\nif (members.length === 0) {\n  console.log('⚠️ Nenhum membro encontrado!');\n  return [];\n}\n\n// 6. Formata a saída combinando os dados da empresa com os de cada membro\nreturn members.map(member => {\n  return {\n    json: {\n      // Dados da Empresa\n      company_number: prepareData.company_number,\n      company_name: prepareData.company_name,\n      url_website_source: prepareData.board_url,\n      \n      // Dados do Executivo\n      type: member.type || member.member_type || 'board_member', // Define valor padrão\n      full_name: member.full_name || member.name || null,\n      role: member.role || member.position || null\n    }\n  };\n});"
+      },
+      "id": "7d1eabab-6e92-4c1b-9456-0c4e9d4be4e7",
+      "name": "Format Board Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "executives_n8n",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "company_number",
+              "fieldValue": "={{ $json.company_number }}"
+            },
+            {
+              "fieldId": "company_name",
+              "fieldValue": "={{ $json.company_name }}"
+            },
+            {
+              "fieldId": "url_website_source",
+              "fieldValue": "={{ $json.url_website_source }}"
+            },
+            {
+              "fieldId": "type",
+              "fieldValue": "={{ $json.type }}"
+            },
+            {
+              "fieldId": "full_name",
+              "fieldValue": "={{ $json.full_name }}"
+            },
+            {
+              "fieldId": "role",
+              "fieldValue": "={{ $json.role }}"
+            }
+          ]
+        }
+      },
+      "id": "8f62d194-49a2-4938-912e-a474cad4f6af",
+      "name": "Insert into Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1728,
+        528
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 15,
+        "unit": "seconds"
+      },
+      "id": "4b1b2a1b-a0ce-45d3-bf82-127e18116988",
+      "name": "Wait Before Next Company",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1936,
+        528
+      ],
+      "webhookId": "wait-webhook-1"
+    }
+  ],
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [
+        [
+          {
+            "node": "Get Companies from Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Companies from Supabase": {
+      "main": [
+        [
+          {
+            "node": "Prepare Extract Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Extract Data": {
+      "main": [
+        [
+          {
+            "node": "Firecrawl Scrape - Board",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firecrawl Scrape - Board": {
+      "main": [
+        [
+          {
+            "node": "AI Extract Board Members",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Extract Board Members": {
+      "main": [
+        [
+          {
+            "node": "Format Board Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Board Results": {
+      "main": [
+        [
+          {
+            "node": "Insert into Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert into Supabase": {
+      "main": [
+        [
+          {
+            "node": "Wait Before Next Company",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Before Next Company": {
+      "main": [
+        [
+          {
+            "node": "Prepare Extract Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "ad16fdaa-449b-4389-a8c6-6650756797a9",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-12T19:46:55.985Z",
+      "createdAt": "2025-10-12T19:46:55.985Z",
+      "role": "workflow:owner",
+      "workflowId": "N6Gf0EmLfcTPnTMp",
+      "projectId": "yy9eTOMcWs4nkB5T"
+    }
+  ],
+  "tags": []
+}
