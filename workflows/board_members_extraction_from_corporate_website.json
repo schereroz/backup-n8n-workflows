@@ -1,0 +1,511 @@
+{
+  "updatedAt": "2025-10-16T12:52:12.000Z",
+  "createdAt": "2025-10-13T17:34:01.426Z",
+  "id": "STwBY1o4wdgjuZMJ",
+  "name": "Board Members Extraction from Corporate Website",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "25659816-2d60-4c0d-9d90-25f073ad215b",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1088,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "link_sources",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "processed",
+              "condition": "eq",
+              "keyValue": "False"
+            }
+          ]
+        }
+      },
+      "id": "7127c90f-2e74-4e02-8e7e-60daa936499c",
+      "name": "Supabase - Get Unprocessed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -864,
+        -64
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "d1142622-11f4-4f49-85ed-4b63efacc0c2",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -640,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "2c286877-4320-4793-86bb-d1ade04f4ef3",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        -208
+      ],
+      "webhookId": "a83cb781-ffbe-4a65-a321-f98692dc205c"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "data_exists",
+              "leftValue": "={{ $json.data }}",
+              "rightValue": true,
+              "operator": {
+                "type": "array",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "aedbe13e-c487-440e-8734-738f4484f2ff",
+      "name": "IF - Data Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        400,
+        -112
+      ],
+      "alwaysOutputData": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get data from previous nodes\nconst companyData = $('Loop Over Items').item.json;\nconst extractedData = $json;\n\n// Log the structure to debug\nconsole.log('Extracted data structure:', JSON.stringify(extractedData, null, 2));\n\n// Check if data exists and has board_of_directors\nif (!extractedData.data || \n    !extractedData.data.board_of_directors || \n    !Array.isArray(extractedData.data.board_of_directors)) {\n  console.log('No board members found');\n  return [];\n}\n\n// Check if array is empty\nif (extractedData.data.board_of_directors.length === 0) {\n  console.log('Board members array is empty');\n  return [];\n}\n\n// Transform each board member into Supabase format\nconst executives = extractedData.data.board_of_directors.map(member => ({\n  company_number: companyData.company_number,\n  company_name: companyData.company_name,\n  type: 'board member',\n  full_name: member.name || '',           // Use empty string if null\n  role: member.title || 'Not specified',  // Use 'Not specified' if null\n  url_website_source: companyData.boardUrl\n}));\n\n// Filter out ONLY entries with missing name (role can be empty)\nconst validExecutives = executives.filter(exec => \n  exec.full_name && exec.full_name.trim() !== ''\n);\n\nconsole.log(`Found ${validExecutives.length} valid executives (including those without title)`);\n\n// Return formatted for n8n\nreturn validExecutives.map(exec => ({ json: exec }));"
+      },
+      "id": "b1ccb948-42a0-4f53-b6ea-095c0feec3e2",
+      "name": "Code - Transform Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        -240
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "tableId": "executives_n8n",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "company_number",
+              "fieldValue": "={{ $json.company_number }}"
+            },
+            {
+              "fieldId": "company_name",
+              "fieldValue": "={{ $json.company_name }}"
+            },
+            {
+              "fieldId": "type",
+              "fieldValue": "={{ $json.type }}"
+            },
+            {
+              "fieldId": "full_name",
+              "fieldValue": "={{ $json.full_name }}"
+            },
+            {
+              "fieldId": "role",
+              "fieldValue": "={{ $json.role }}"
+            },
+            {
+              "fieldId": "url_website_source",
+              "fieldValue": "={{ $json.url_website_source }}"
+            }
+          ]
+        }
+      },
+      "id": "8ea25d36-de54-4861-a67f-42f0702a0274",
+      "name": "Supabase - Insert Executives",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        -176
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "link_sources",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Loop Over Items').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "processed",
+              "fieldValue": "true"
+            }
+          ]
+        }
+      },
+      "id": "503e8cfa-888e-4fd7-a4cd-733fb91c478f",
+      "name": "Supabase - Mark Processed (Success)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        -224
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "b18004ae-2878-4b31-b6e1-d0780af4fcf3",
+      "name": "Loop Back",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1536,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.firecrawl.dev/v2/extract/{{ $('Extract').item.json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        176,
+        -416
+      ],
+      "id": "8c3741e5-8a6b-4a43-b3a6-cf7e73772c34",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KT3q4YLLWiIqM1fj",
+          "name": "Header Auth Firecrawl"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        192
+      ],
+      "id": "5aef9051-43ad-47f6-a403-1c8e461941b3",
+      "name": "Wait1",
+      "webhookId": "ee26cad3-bcfc-4880-bf5e-7af943ef834a"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v2/extract",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"urls\": [\n    \"{{ $json.boardUrl }}\"\n  ],\n  \"prompt\": \"Extract only those listed as Board of Directors, not the executive leadership team. Include board members who are also CEOs, CFOs, or hold other roles. Return clean, standardized names without prefixes like 'Mr.' or 'Dr.'. Use exact job titles as they appear on the page. If photos or bios are present, extract the name and title from the text near the photo.\",\n  \"schema\": {\n    \"type\": \"object\",\n    \"required\": [],\n    \"properties\": {\n      \"board_of_directors\": {\n        \"type\": \"array\",\n        \"items\": {\n          \"type\": \"object\",\n          \"required\": [],\n          \"properties\": {\n            \"name\": {\n              \"type\": \"string\"\n            },\n            \"title\": {\n              \"type\": \"string\"\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -128,
+        -320
+      ],
+      "id": "ed6ab89f-5878-4cef-90a6-aeef3abcb6ef",
+      "name": "Extract",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KT3q4YLLWiIqM1fj",
+          "name": "Header Auth Firecrawl"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "PULL BOARD MEMBERS COMPANIES WEBSITES FROM SUPABASE",
+        "height": 720,
+        "width": 896
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1184,
+        -464
+      ],
+      "typeVersion": 1,
+      "id": "09bea4cd-7ee7-4b78-91a9-c47a2fba15f0",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "FIRECRAWL - EXTRACTON",
+        "height": 880,
+        "width": 896,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -224,
+        -464
+      ],
+      "typeVersion": 1,
+      "id": "a60ead39-e0cd-41a1-969b-5deedc00c31a",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "ADD TO SUPABSE",
+        "height": 720,
+        "width": 1008,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        720,
+        -464
+      ],
+      "typeVersion": 1,
+      "id": "cadb10f9-a767-4a21-a5d7-d892c4695f00",
+      "name": "Sticky Note2"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Get Unprocessed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Get Unprocessed": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Data Found": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Transform Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Transform Data": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Insert Executives",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Insert Executives": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Mark Processed (Success)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Mark Processed (Success)": {
+      "main": [
+        [
+          {
+            "node": "Loop Back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Back": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "IF - Data Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "d549250a-5360-4003-92ce-6c043b4cacdf",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-13T17:34:01.431Z",
+      "createdAt": "2025-10-13T17:34:01.431Z",
+      "role": "workflow:owner",
+      "workflowId": "STwBY1o4wdgjuZMJ",
+      "projectId": "yy9eTOMcWs4nkB5T"
+    }
+  ],
+  "tags": []
+}
