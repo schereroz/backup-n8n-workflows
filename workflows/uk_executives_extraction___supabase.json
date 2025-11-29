@@ -1,0 +1,282 @@
+{
+  "updatedAt": "2025-10-12T14:34:52.000Z",
+  "createdAt": "2025-10-12T14:06:08.984Z",
+  "id": "37h2606mqMaaCzd5",
+  "name": "UK Executives Extraction - Supabase",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "link_sources"
+      },
+      "name": "Supabase - Get Companies",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        16,
+        176
+      ],
+      "id": "902171e7-0145-44ea-9139-520665c90396",
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      },
+      "notes": "Busca empresas da tabela link_sources com links válidos"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Separa cada empresa em 2 items: um para board_member_link e outro para top_management_link\nconst outputItems = [];\n\nfor (const item of $input.all()) {\n  const companyNumber = item.json['#'];\n  const companyName = item.json.company_name;\n  const boardLink = item.json.board_member_link;\n  const managementLink = item.json.top_management_link;\n\n  // Adiciona item para board members se o link existir\n  if (boardLink && boardLink.trim() !== '') {\n    outputItems.push({\n      json: {\n        company_number: companyNumber,\n        company_name: companyName,\n        url: boardLink,\n        type: 'board_member'\n      }\n    });\n  }\n\n  // Adiciona item para top management se o link existir\n  if (managementLink && managementLink.trim() !== '') {\n    outputItems.push({\n      json: {\n        company_number: companyNumber,\n        company_name: companyName,\n        url: managementLink,\n        type: 'top_management'\n      }\n    });\n  }\n}\n\nreturn outputItems;"
+      },
+      "name": "Split Links by Type",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        176
+      ],
+      "id": "76aeb8e6-9983-4307-94a7-473f31b58e5c",
+      "notes": "Transforma cada empresa em 2 items separados (board e management)"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "en-GB,en;q=0.9"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {
+              "maxRedirects": 5
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "name": "HTTP Request - Fetch Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        416,
+        176
+      ],
+      "id": "66f3bc0e-bdc7-40dd-9353-2ea759808ea6",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KT3q4YLLWiIqM1fj",
+          "name": "Header Auth account 3"
+        },
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      },
+      "continueOnFail": true,
+      "notes": "Faz o download do HTML da página"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Limpa e simplifica o HTML para reduzir tokens e focar no conteúdo relevante\nconst item = $input.item.json;\n\nif (!item.data) {\n  return [{\n    json: {\n      ...item,\n      html_content: '',\n      error: 'No HTML content received'\n    }\n  }];\n}\n\nlet html = item.data;\n\n// Remove scripts, styles, comments\nhtml = html.replace(/<script[\\s\\S]*?<\\/script>/gi, '');\nhtml = html.replace(/<style[\\s\\S]*?<\\/style>/gi, '');\nhtml = html.replace(/<!--[\\s\\S]*?-->/g, '');\n\n// Remove tags desnecessários mas mantém conteúdo\nhtml = html.replace(/<(header|footer|nav|aside)[\\s\\S]*?<\\/\\1>/gi, '');\n\n// Simplifica espaços\nhtml = html.replace(/\\s+/g, ' ');\nhtml = html.trim();\n\n// Limita tamanho (primeiros 50000 caracteres - ajuste conforme necessário)\nif (html.length > 50000) {\n  html = html.substring(0, 50000) + '... [truncated]';\n}\n\nreturn [{\n  json: {\n    company_number: item.company_number,\n    company_name: item.company_name,\n    url: item.url,\n    type: item.type,\n    html_content: html\n  }\n}];"
+      },
+      "name": "Clean HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        176
+      ],
+      "id": "ca51c59b-5479-4011-a580-3531d2b6be29",
+      "notes": "Remove elementos desnecessários do HTML para reduzir custo da API"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {
+          "maxTokens": 4000,
+          "temperature": 0.1
+        }
+      },
+      "name": "OpenAI - Extract Executives",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        848,
+        -16
+      ],
+      "id": "fbee307f-9b36-40f8-8a0d-1dcffcb3a10f",
+      "credentials": {
+        "openAiApi": {
+          "id": "mZ3zckH2SlfqcPPK",
+          "name": "OpenAi account"
+        }
+      },
+      "notes": "Usa GPT-4 para extrair executivos de forma inteligente"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse a resposta da OpenAI e prepara os dados para inserção no Supabase\nconst item = $input.item.json;\nconst outputItems = [];\n\ntry {\n  // A resposta pode vir em diferentes formatos dependendo do node\n  let responseText = '';\n  \n  if (item.message?.content) {\n    responseText = item.message.content;\n  } else if (item.text) {\n    responseText = item.text;\n  } else if (typeof item === 'string') {\n    responseText = item;\n  } else {\n    responseText = JSON.stringify(item);\n  }\n\n  // Remove markdown code blocks se existirem\n  responseText = responseText.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\n  // Parse JSON\n  const parsed = JSON.parse(responseText);\n  const executives = parsed.executives || [];\n\n  // Cria um item para cada executivo\n  for (const exec of executives) {\n    if (exec.full_name && exec.role) {\n      outputItems.push({\n        json: {\n          company_number: item.company_number,\n          company_name: item.company_name,\n          type: item.type,\n          full_name: exec.full_name.trim(),\n          role: exec.role.trim(),\n          url_website_source: item.url\n        }\n      });\n    }\n  }\n\n  // Se não encontrou nenhum executivo, retorna item de erro para logging\n  if (outputItems.length === 0) {\n    console.log(`No executives found for ${item.company_name} (${item.type})`);\n    return [];\n  }\n\n} catch (error) {\n  console.error(`Error parsing OpenAI response for ${item.company_name}:`, error.message);\n  console.error('Response:', item);\n  return [];\n}\n\nreturn outputItems;"
+      },
+      "name": "Parse and Format Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        176
+      ],
+      "id": "07342f2b-d564-4422-9ef4-fe28700dab57",
+      "notes": "Parse resposta da IA e formata para inserção no Supabase"
+    },
+    {
+      "parameters": {
+        "operation": "insert"
+      },
+      "name": "Supabase - Insert Executives",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        176
+      ],
+      "id": "dfe53299-297b-4490-af85-f4d5024e5729",
+      "continueOnFail": true,
+      "notes": "Insere executivos na tabela executives_n8n"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Node de logging para monitorar o progresso\nconst item = $input.item.json;\n\nconsole.log('='.repeat(60));\nconsole.log(`✓ Executivo inserido com sucesso:`);\nconsole.log(`  Empresa: ${item.company_name}`);\nconsole.log(`  Nome: ${item.full_name}`);\nconsole.log(`  Cargo: ${item.role}`);\nconsole.log(`  Tipo: ${item.type}`);\nconsole.log('='.repeat(60));\n\nreturn [$input.item];"
+      },
+      "name": "Success Logger",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        176
+      ],
+      "id": "fe31af96-c419-4f57-9a99-f2f38d1326ed",
+      "notes": "Log de sucesso para monitoramento"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Node para tratar erros e fazer logging\nconst items = $input.all();\nconst errors = [];\n\nfor (const item of items) {\n  if (item.json.error) {\n    errors.push({\n      company_name: item.json.company_name,\n      url: item.json.url,\n      type: item.json.type,\n      error: item.json.error\n    });\n    \n    console.error('='.repeat(60));\n    console.error(`✗ Erro ao processar:`);\n    console.error(`  Empresa: ${item.json.company_name}`);\n    console.error(`  URL: ${item.json.url}`);\n    console.error(`  Tipo: ${item.json.type}`);\n    console.error(`  Erro: ${item.json.error}`);\n    console.error('='.repeat(60));\n  }\n}\n\nreturn [{\n  json: {\n    total_errors: errors.length,\n    errors: errors\n  }\n}];"
+      },
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        368
+      ],
+      "id": "3b44e25b-cbf4-4d96-a8cd-2af0deb0a17a",
+      "notes": "Captura e loga erros durante o processo"
+    },
+    {
+      "parameters": {
+        "content": "## UK Executives Extraction Workflow\n\nEste workflow extrai informações de executivos de empresas do Reino Unido.\n\n### Fluxo:\n1. Busca empresas no Supabase\n2. Separa links de board members e top management\n3. Faz scraping das páginas\n4. Limpa HTML para otimizar\n5. Usa OpenAI GPT-4 para extrair executivos\n6. Salva no Supabase\n\n### Configuração necessária:\n- Credenciais Supabase\n- Credenciais OpenAI (GPT-4)\n\n### Monitoramento:\n- Verifique os logs do console\n- Use a view executives_summary no Supabase",
+        "height": 400,
+        "width": 350
+      },
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        -256
+      ],
+      "id": "b513cb41-76b6-4668-8d4d-3622d05571e6"
+    }
+  ],
+  "connections": {
+    "Supabase - Get Companies": {
+      "main": [
+        [
+          {
+            "node": "Split Links by Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Links by Type": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Fetch Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Fetch Page": {
+      "main": [
+        [
+          {
+            "node": "Clean HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse and Format Data": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Insert Executives",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Insert Executives": {
+      "main": [
+        [
+          {
+            "node": "Success Logger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "eb1d122a-e065-4d6b-bc89-eebf8627ee92",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-12T14:06:08.987Z",
+      "createdAt": "2025-10-12T14:06:08.987Z",
+      "role": "workflow:owner",
+      "workflowId": "37h2606mqMaaCzd5",
+      "projectId": "yy9eTOMcWs4nkB5T"
+    }
+  ],
+  "tags": []
+}
