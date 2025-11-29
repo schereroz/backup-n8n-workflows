@@ -1,0 +1,564 @@
+{
+  "updatedAt": "2025-10-16T12:50:46.000Z",
+  "createdAt": "2025-10-15T18:06:12.490Z",
+  "id": "z8tyrz4FQLtbPOXs",
+  "name": "Linkedin Url Finder",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "d89140ba-bc38-43f1-8b90-7a42062c3b67",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2992,
+        -832
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "uk_executives_list",
+        "limit": 3,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "processed",
+              "condition": "eq",
+              "keyValue": "False"
+            }
+          ]
+        }
+      },
+      "id": "d747ca02-ca13-4ba0-a92d-188ec55ce68b",
+      "name": "Supabase - Get Unprocessed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -2768,
+        -832
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "92233ecd-96f9-414b-be03-dff06a08fb6d",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -2544,
+        -832
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "16519a43-8f1a-4cea-85c7-c6c5fe5bed64",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        -2352,
+        -976
+      ],
+      "webhookId": "9316745d-6f60-48c0-bfd7-3cff031ee59f"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "data_exists",
+              "leftValue": "={{ $json.data }}",
+              "rightValue": true,
+              "operator": {
+                "type": "array",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "851ae28f-c16a-43c0-9d6e-f3980dfead14",
+      "name": "IF - Data Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1296,
+        -880
+      ],
+      "alwaysOutputData": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get data from previous nodes\nconst companyData = $('Loop Over Items').item.json;\nconst extractedData = $json;\n\n// Log the structure to debug\nconsole.log('Extracted data structure:', JSON.stringify(extractedData, null, 2));\n\n// Check if data exists and has the executive_leadership_team array\nif (!extractedData.data || \n    !extractedData.data.executive_leadership_team || \n    !Array.isArray(extractedData.data.executive_leadership_team)) {\n  console.log('No executive leadership team found in the data.');\n  return [];\n}\n\n// Check if the array is empty\nif (extractedData.data.executive_leadership_team.length === 0) {\n  console.log('Executive leadership team array is empty.');\n  return [];\n}\n\n// Transform each team member into the desired format\nconst executives = extractedData.data.executive_leadership_team.map(member => ({\n  company_number: companyData.company_number,\n  company_name: companyData.company_name,\n  type: 'top_management',\n  full_name: member.name || '',          // Use empty string if null\n  role: member.title || 'Not specified', // Use 'Not specified' if null\n  url_website_source: companyData.tmtUrl\n}));\n\n// Filter out entries with a missing name (role can be empty)\nconst validExecutives = executives.filter(exec => \n  exec.full_name && exec.full_name.trim() !== ''\n);\n\nconsole.log(`Found ${validExecutives.length} valid executive members.`);\n\n// Return the formatted data for n8n\nreturn validExecutives.map(exec => ({ json: exec }));"
+      },
+      "id": "06220da2-ac00-4621-b78e-bb341c3e4c5d",
+      "name": "Code - Transform Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -896,
+        -1008
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "tableId": "executives_n8n",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "company_number",
+              "fieldValue": "={{ $json.company_number }}"
+            },
+            {
+              "fieldId": "company_name",
+              "fieldValue": "={{ $json.company_name }}"
+            },
+            {
+              "fieldId": "type",
+              "fieldValue": "={{ $json.type }}"
+            },
+            {
+              "fieldId": "full_name",
+              "fieldValue": "={{ $json.full_name }}"
+            },
+            {
+              "fieldId": "role",
+              "fieldValue": "={{ $json.role }}"
+            },
+            {
+              "fieldId": "url_website_source",
+              "fieldValue": "={{ $json.url_website_source }}"
+            }
+          ]
+        }
+      },
+      "id": "1f48f625-05a8-455e-8677-1b584b635ce4",
+      "name": "Supabase - Insert Executives",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -608,
+        -944
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "link_sources_tmt",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Loop Over Items').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "processed",
+              "fieldValue": "true"
+            }
+          ]
+        }
+      },
+      "id": "2ed824f5-f2de-4bcd-9778-3d33a0bea0bf",
+      "name": "Supabase - Mark Processed (Success)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -368,
+        -992
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "1271b739-a9eb-4d69-af0d-55d6a78dcba1",
+      "name": "Loop Back",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        -832
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1232,
+        -576
+      ],
+      "id": "19021ee0-6418-4c93-b098-7d0bffd5dc7b",
+      "name": "Wait1",
+      "webhookId": "ab72bfef-5be7-4e8f-b635-f4342a6fd8d1"
+    },
+    {
+      "parameters": {
+        "content": "TOP MANAGEMENT TEAM EXTRACTION",
+        "height": 720,
+        "width": 896
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3088,
+        -1232
+      ],
+      "typeVersion": 1,
+      "id": "4215a44b-0af3-490c-849a-5bca669e59f0",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "SEARCH FOR LINKEDIN ID",
+        "height": 880,
+        "width": 896,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2128,
+        -1232
+      ],
+      "typeVersion": 1,
+      "id": "5ae5c1e5-3588-4328-be66-999c31997b65",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "ADD TO SUPABSE",
+        "height": 720,
+        "width": 1008,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1184,
+        -1232
+      ],
+      "typeVersion": 1,
+      "id": "3f005595-b4e6-4628-bc88-9a8040fe0bf4",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Search on Google the Linkedin url profile of the following person: {{ $json['full name'] }}. He/She is director of the following company: {{ $json.company_name }} and his role there is {{ $json.role }}\n\nYou have to be sure you find the correct Linkedin profile.\n\nOnce you find the linkedin url, prepare this data to be update later a variable linkedin_url.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -1824,
+        -1136
+      ],
+      "id": "25e63ddd-b78c-43b9-a7f0-66f627e13781",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -1936,
+        -864
+      ],
+      "id": "ade44a71-4d9d-4fe8-b5a5-d40011eea131",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "mZ3zckH2SlfqcPPK",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "messages": {
+          "message": [
+            {
+              "content": "=You are an experienced researcher. You are looking for the Linkedin url profile of the following person: {{ $json['full name'] }}. He/She is director of the following company: {{ $json.company_name }} and his role there is {{ $json.role }}."
+            }
+          ]
+        },
+        "options": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.perplexityTool",
+      "typeVersion": 1,
+      "position": [
+        -1872,
+        -560
+      ],
+      "id": "766c5922-14d6-4cce-9126-f1d0fcdcb042",
+      "name": "Message a model in Perplexity",
+      "credentials": {
+        "perplexityApi": {
+          "id": "turLTTDVJVJtS6gb",
+          "name": "Perplexity account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
+      "typeVersion": 1,
+      "position": [
+        -1600,
+        -544
+      ],
+      "id": "3260aff8-6386-4f4f-90d4-7dad23f578ab",
+      "name": "SerpAPI",
+      "credentials": {
+        "serpApi": {
+          "id": "hsKZkPLPtZg7XIiQ",
+          "name": "SerpApi account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Get Unprocessed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Get Unprocessed": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Data Found": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Transform Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Transform Data": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Insert Executives",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Insert Executives": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Mark Processed (Success)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Mark Processed (Success)": {
+      "main": [
+        [
+          {
+            "node": "Loop Back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Back": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "IF - Data Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "IF - Data Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model in Perplexity": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "SerpAPI": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "8852c443-0dd1-4c1b-843f-51a83ea1ccca",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-15T18:06:12.501Z",
+      "createdAt": "2025-10-15T18:06:12.501Z",
+      "role": "workflow:owner",
+      "workflowId": "z8tyrz4FQLtbPOXs",
+      "projectId": "yy9eTOMcWs4nkB5T"
+    }
+  ],
+  "tags": []
+}
