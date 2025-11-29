@@ -1,0 +1,617 @@
+{
+  "updatedAt": "2025-10-19T13:09:36.000Z",
+  "createdAt": "2025-10-17T00:14:39.115Z",
+  "id": "KbOaSYTx9jPufNew",
+  "name": "Linkedin TMT Profile Scraper",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "477c3d1f-cb91-47a9-ad0a-0a068f96e2d7",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        -448
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "uk_executives_list",
+        "limit": 2,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "linkedin_url",
+              "condition": "neq",
+              "keyValue": "N/A"
+            },
+            {
+              "keyName": "linkedin_url",
+              "condition": "neq",
+              "keyValue": "EMPTY"
+            },
+            {
+              "keyName": "tmt_profile_processed",
+              "condition": "eq",
+              "keyValue": "FALSE"
+            },
+            {
+              "keyName": "type",
+              "condition": "eq",
+              "keyValue": "top_management"
+            }
+          ]
+        }
+      },
+      "id": "14f2df9e-c8e4-4514-9961-e6717b290256",
+      "name": "Supabase - Get Unprocessed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -912,
+        -448
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 2,
+        "options": {}
+      },
+      "id": "e3d6fd41-8690-4994-8a65-1cafbece0f80",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -656,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "4582230f-5e44-4eab-b858-98e136085b84",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        -576
+      ],
+      "webhookId": "86715e98-9fb2-44a3-ac27-5a56b397b6e3",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Get the current item (not all items)\nconst data = $input.item.json;\n\n// Get executive_id from the previous node (Loop Over Items)\nconst loopItem = $('Loop Over Items').item.json;\n\n// Transform the single item to match Supabase schema\nreturn {\n  json: {\n    // **ADD THIS LINE - Include executive_id from Loop Over Items**\n    executive_id: loopItem.executive_id,\n    \n    // Basic profile information\n    linkedin_url: data.linkedinUrl,\n    first_name: data.firstName,\n    last_name: data.lastName,\n    full_name: data.fullName,\n    headline: data.headline,\n    \n    // Contact information\n    email: data.email,\n    mobile_number: data.mobileNumber,\n    \n    // Professional details\n    job_title: data.jobTitle,\n    company_name: data.companyName,\n    company_industry: data.companyIndustry,\n    company_website: data.companyWebsite,\n    company_linkedin: data.companyLinkedin,\n    company_founded_in: data.companyFoundedIn,\n    company_size: data.companySize,\n    \n    // Job duration\n    current_job_duration: data.currentJobDuration,\n    current_job_duration_in_yrs: data.currentJobDurationInYrs,\n    \n    // Profile details\n    connections: data.connections,\n    followers: data.followers,\n    top_skills: data.topSkillsByEndorsements,\n    \n    // Location\n    address_country: data.addressCountryOnly,\n    address_full: data.addressWithCountry,\n    address_region: data.addressWithoutCountry,\n    \n    // Images\n    profile_pic: data.profilePic,\n    profile_pic_hq: data.profilePicHighQuality,\n    \n    // About section\n    about: data.about,\n    \n    // LinkedIn identifiers\n    public_identifier: data.publicIdentifier,\n    urn: data.urn,\n    \n    // Complex data as JSON\n    experiences: JSON.stringify(data.experiences),\n    skills: JSON.stringify(data.skills),\n    educations: JSON.stringify(data.educations),\n    recommendations: JSON.stringify(data.recommendations),\n    interests: JSON.stringify(data.interests),\n    \n    // Metadata\n    scraped_at: new Date().toISOString(),\n    raw_data: JSON.stringify(data)\n  }\n};"
+      },
+      "id": "aaabfbdf-8113-41c0-ba08-95972d5f3fce",
+      "name": "Code - Transform Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        -336
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "uk_executives_list",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "executive_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.executive_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "tmt_profile_processed",
+              "fieldValue": "true"
+            }
+          ]
+        }
+      },
+      "id": "efabd277-9e78-4c2c-948a-fe280f58a50e",
+      "name": "Supabase - Mark Processed (Success)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        976,
+        -592
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "0ff92d4d-1579-4364-ae9f-81f88e7edeb4",
+      "name": "Loop Back",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "content": "PULL BOARD MEMBERS AND TMT LINKEDIN ID PROFILES FROM SUPABAS",
+        "height": 400,
+        "width": 464
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1216,
+        -592
+      ],
+      "typeVersion": 1,
+      "id": "f8fe060c-6ecf-43b9-88a4-20f36aa251e6",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "APIFY - SCRAPE LINKEDIN PROFILES",
+        "height": 544,
+        "width": 1024,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -736,
+        -672
+      ],
+      "typeVersion": 1,
+      "id": "420781d7-4518-4f16-b112-73f17d7921d4",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "ADD TO SUPABSE",
+        "height": 544,
+        "width": 1008,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        304,
+        -672
+      ],
+      "typeVersion": 1,
+      "id": "db8cdb6e-fb68-49f3-9e73-9a0bc189d136",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "actorId": {
+          "__rl": true,
+          "value": "2SyF0bVxmgGr8IVCZ",
+          "mode": "list",
+          "cachedResultName": "✨Mass Linkedin Profile Scraper with Email 📧 (No Cookies) (dev_fusion/Linkedin-Profile-Scraper)",
+          "cachedResultUrl": "https://console.apify.com/actors/2SyF0bVxmgGr8IVCZ/input"
+        },
+        "customBody": "={\n    \"profileUrls\": [\n        \"{{ $json.linkedin_url }}\"\n    ]\n}"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        -576
+      ],
+      "id": "49175ac4-8c1d-4dfe-87c5-30923a217f75",
+      "name": "Run an Actor",
+      "credentials": {
+        "apifyApi": {
+          "id": "yEPTLuZuRO6CpnJT",
+          "name": "Apify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "Datasets",
+        "datasetId": "={{ $json.defaultDatasetId }}"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        128,
+        -576
+      ],
+      "id": "44d11ccf-d481-48a8-ae22-3a4cdf7c44b1",
+      "name": "Get dataset items",
+      "credentials": {
+        "apifyApi": {
+          "id": "yEPTLuZuRO6CpnJT",
+          "name": "Apify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "tmt_linkedin_profiles",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "executive_id",
+              "fieldValue": "={{ $('Loop Over Items').item.json.executive_id }}"
+            },
+            {
+              "fieldId": "company_number",
+              "fieldValue": "={{ $('Loop Over Items').item.json.company_number }}"
+            },
+            {
+              "fieldId": "company_name",
+              "fieldValue": "={{ $('Loop Over Items').item.json.company_name }}"
+            },
+            {
+              "fieldId": "type",
+              "fieldValue": "={{ $('Loop Over Items').item.json.type }}"
+            },
+            {
+              "fieldId": "full_name",
+              "fieldValue": "={{ $('Loop Over Items').item.json['full name'] }}"
+            },
+            {
+              "fieldId": "url_website_source",
+              "fieldValue": "={{ $('Loop Over Items').item.json.url_website_source }}"
+            },
+            {
+              "fieldId": "linkedinUrl",
+              "fieldValue": "={{ $('Loop Over Items').item.json.linkedin_url }}"
+            },
+            {
+              "fieldId": "about",
+              "fieldValue": "={{ $json.about }}"
+            },
+            {
+              "fieldId": "profilePic",
+              "fieldValue": "={{ $json.profile_pic_hq }}"
+            },
+            {
+              "fieldId": "educations",
+              "fieldValue": "={{ $json.educations }}"
+            },
+            {
+              "fieldId": "skills",
+              "fieldValue": "={{ $json.skills }}"
+            },
+            {
+              "fieldId": "_runDate",
+              "fieldValue": "={{ $json.scraped_at }}"
+            },
+            {
+              "fieldId": "experiences",
+              "fieldValue": "={{ $json.experiences }}"
+            }
+          ]
+        }
+      },
+      "id": "276ed9fa-eeec-472c-b75e-f13162d584b8",
+      "name": "Supabase - Insert TMT Profiles",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        800,
+        -336
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "8467886757",
+        "text": "LinkedIn TMT PROFILES scraping workflow completed successfully!  All PROFILES have been processed and inserted into Supabase.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -16,
+        -336
+      ],
+      "id": "1331aa09-f669-477d-9478-f296ef4cdbf7",
+      "name": "Send a text message1",
+      "webhookId": "ccb389fa-d24f-4b12-ad86-0f0bc83e3119",
+      "credentials": {
+        "telegramApi": {
+          "id": "o08hb9RGQbIKErXK",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        -336
+      ],
+      "id": "5864920e-d965-4ed8-b315-2bcf9f64e26d",
+      "name": "Aggregate1"
+    },
+    {
+      "parameters": {
+        "content": "SEND A MESSAGE WHEN IS FINISHED",
+        "height": 208,
+        "width": 592,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -400,
+        -384
+      ],
+      "typeVersion": 1,
+      "id": "4618b99b-6dcf-4b9e-a41e-8667a38cbb80",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -64,
+        -576
+      ],
+      "id": "236f0abe-39b1-42a0-a920-a4f7d8a44fe3",
+      "name": "Wait3",
+      "webhookId": "cd44fd77-85e2-4252-bd18-204ee1b0e8ff",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "90e0ecdc-2881-4a7a-8617-e0aa76af06ab",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        352,
+        -576
+      ],
+      "id": "b12246f2-7ed0-4990-b80e-6b4143351f03",
+      "name": "If No Posts Published1"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Get Unprocessed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Get Unprocessed": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Aggregate1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Transform Data": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Insert TMT Profiles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Mark Processed (Success)": {
+      "main": [
+        [
+          {
+            "node": "Loop Back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Back": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Run an Actor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run an Actor": {
+      "main": [
+        [
+          {
+            "node": "Wait3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get dataset items": {
+      "main": [
+        [
+          {
+            "node": "If No Posts Published1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Insert TMT Profiles": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Mark Processed (Success)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait3": {
+      "main": [
+        [
+          {
+            "node": "Get dataset items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If No Posts Published1": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Mark Processed (Success)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Transform Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "93cc0b9d-235b-4c64-85f6-965011c00303",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-17T00:14:39.130Z",
+      "createdAt": "2025-10-17T00:14:39.130Z",
+      "role": "workflow:owner",
+      "workflowId": "KbOaSYTx9jPufNew",
+      "projectId": "yy9eTOMcWs4nkB5T"
+    }
+  ],
+  "tags": []
+}
