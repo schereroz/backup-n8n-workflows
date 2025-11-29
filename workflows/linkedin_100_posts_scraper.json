@@ -1,0 +1,613 @@
+{
+  "updatedAt": "2025-10-19T12:21:52.000Z",
+  "createdAt": "2025-10-16T13:41:18.457Z",
+  "id": "QfzqaKLyfmeJ3wIp",
+  "name": "Linkedin 100 Posts Scraper",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1983815e-c3b2-4a05-9a96-b48ca4377de4",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1136,
+        -464
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "uk_executives_list",
+        "limit": 20,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "100posts_processed",
+              "condition": "eq",
+              "keyValue": "FALSE"
+            },
+            {
+              "keyName": "linkedin_url",
+              "condition": "neq",
+              "keyValue": "N/A"
+            }
+          ]
+        }
+      },
+      "id": "209045de-57fa-437b-8db1-36967728ecd5",
+      "name": "Supabase - Get Unprocessed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -912,
+        -464
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "bd515577-1f2d-47ff-8fbc-6109521841dc",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -672,
+        -464
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "68318f7e-b885-4e1b-bfca-68752eed8bd8",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        -576
+      ],
+      "webhookId": "7daadcbf-25ac-4e2e-9d1e-999dea87c767"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "uk_executives_list",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "executive_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Loop Over Items').item.json.executive_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "100posts_processed",
+              "fieldValue": "TRUE"
+            }
+          ]
+        }
+      },
+      "id": "a10a16de-d29a-4763-ac5d-f0e517c8b3a6",
+      "name": "Supabase - Mark Processed (Success)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        864,
+        -592
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "17e2cfc2-c0ce-4236-ab8d-320b87ba0d73",
+      "name": "Loop Back",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        992,
+        -368
+      ]
+    },
+    {
+      "parameters": {
+        "content": "PULL BOARD MEMBERS AND TMT LINKEDIN ID PROFILES FROM SUPABASE",
+        "height": 400,
+        "width": 464
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1216,
+        -592
+      ],
+      "typeVersion": 1,
+      "id": "178b1469-3d02-4b94-a9fa-c832f063b3a4",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "APIFY - SCRAPE LINKEDIN 100 POSTS",
+        "height": 512,
+        "width": 832,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -736,
+        -672
+      ],
+      "typeVersion": 1,
+      "id": "0e6a002b-9421-41f2-9069-d61b343031fe",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "ADD TO SUPABSE",
+        "height": 512,
+        "width": 1056,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        112,
+        -672
+      ],
+      "typeVersion": 1,
+      "id": "310b10b5-de41-4c53-96c4-0391aa51fc2c",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "actorId": {
+          "__rl": true,
+          "value": "Wpp1BZ6yGWjySadk3",
+          "mode": "list",
+          "cachedResultName": "Linkedin Post Scraper ✅ No cookies ✅ $2 per 1k posts (supreme_coder/linkedin-post)",
+          "cachedResultUrl": "https://console.apify.com/actors/Wpp1BZ6yGWjySadk3/input"
+        },
+        "customBody": "={\n    \"deepScrape\": true,\n    \"limitPerSource\": 100,\n    \"scrapeUntil\": \"2020-01-01\",\n    \"rawData\": false,\n    \"urls\": [\n        \"{{ $json.linkedin_url }}\"\n    ]\n}"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        -576
+      ],
+      "id": "c7854f48-878f-4180-aec7-bb7bff974a60",
+      "name": "Run an Actor",
+      "credentials": {
+        "apifyApi": {
+          "id": "yEPTLuZuRO6CpnJT",
+          "name": "Apify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "Datasets",
+        "datasetId": "={{ $json.defaultDatasetId }}",
+        "limit": 100
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -576
+      ],
+      "id": "26047c6f-634e-43f4-906f-4eaacfa63cf5",
+      "name": "Get dataset items",
+      "credentials": {
+        "apifyApi": {
+          "id": "yEPTLuZuRO6CpnJT",
+          "name": "Apify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Get the current post data (this runs once per item after Split Out)\nconst data = $input.item.json;\n\n// Get the executive data from Loop Over Items\nconst loopData = $('Loop Over Items').item.json;\n\n// Check if this is a reshared post (safe check)\nconst resharedPost = data.resharedPost || null;\n\n// Return the transformed data (single object, not array)\nreturn {\n  // ============================================\n  // EXECUTIVE REFERENCE (from Supabase)\n  // ============================================\n  executive_id: loopData.id,  // ✅ Changed from original_record_id\n  company_number: loopData.company_number,\n  company_name: loopData.company_name,\n  executive_type: loopData.type,\n  role: loopData.role,\n  full_name: loopData['full name'],\n  website_source: loopData.url_website_source,\n  linkedin_url: loopData.linkedin_url,\n  \n  // ============================================\n  // MAIN POST DATA\n  // ============================================\n  \n  // Post identifiers\n  urn: data.urn,\n  activity_url: data.url,\n  input_url: data.inputUrl,\n  \n  // Post metadata\n  post_type: data.type,\n  time_since_posted: data.timeSincePosted,\n  share_urn: data.shareUrn,\n  is_activity: data.isActivity,\n  \n  // Post content\n  post_text: data.text,\n  \n  // Media\n  images: data.images ? JSON.stringify(data.images) : null,\n  linkedin_video: data.linkedinVideo ? JSON.stringify(data.linkedinVideo) : null,\n  \n  // Engagement metrics\n  num_likes: data.numLikes,\n  num_comments: data.numComments,\n  num_shares: data.numShares,\n  \n  // Post settings\n  can_react: data.canReact,\n  can_post_comments: data.canPostComments,\n  can_share: data.canShare,\n  commenting_disabled: data.commentingDisabled,\n  allowed_commenters_scope: data.allowedCommentersScope,\n  root_share: data.rootShare,\n  share_audience: data.shareAudience,\n  \n  // Timestamp\n  posted_at_timestamp: data.postedAtTimestamp,\n  posted_at_iso: data.postedAtISO,\n  \n  // Author information\n  author_id: data.author?.id,\n  author_profile_id: data.authorProfileId,\n  author_public_id: data.author?.publicId,\n  author_first_name: data.author?.firstName,\n  author_last_name: data.author?.lastName,\n  author_full_name: data.authorName,\n  author_headline: data.authorHeadline,\n  author_occupation: data.author?.occupation,\n  author_profile_url: data.authorProfileUrl,\n  author_profile_picture: data.authorProfilePicture,\n  author_urn: data.authorUrn,\n  author_type: data.authorType,\n  \n  // Engagement details (as JSON)\n  reactions: data.reactions ? JSON.stringify(data.reactions) : null,\n  comments: data.comments ? JSON.stringify(data.comments) : null,\n  attributes: data.attributes ? JSON.stringify(data.attributes) : null,\n  \n  // ============================================\n  // RESHARED POST DATA (if exists)\n  // ============================================\n  is_reshare: resharedPost ? true : false,\n  \n  // Reshared post identifiers\n  reshared_urn: resharedPost?.urn || null,\n  reshared_activity_url: resharedPost?.url || null,\n  reshared_share_urn: resharedPost?.shareUrn || null,\n  \n  // Reshared post metadata\n  reshared_post_type: resharedPost?.type || null,\n  reshared_time_since_posted: resharedPost?.timeSincePosted || null,\n  reshared_is_activity: resharedPost?.isActivity || null,\n  \n  // Reshared post content\n  reshared_post_text: resharedPost?.text || null,\n  \n  // Reshared post media\n  reshared_images: resharedPost?.images ? JSON.stringify(resharedPost.images) : null,\n  reshared_linkedin_video: resharedPost?.linkedinVideo ? JSON.stringify(resharedPost.linkedinVideo) : null,\n  \n  // Reshared post engagement metrics\n  reshared_num_likes: resharedPost?.numLikes || null,\n  reshared_num_comments: resharedPost?.numComments || null,\n  reshared_num_shares: resharedPost?.numShares || null,\n  \n  // Reshared post settings\n  reshared_can_react: resharedPost?.canReact || null,\n  reshared_can_post_comments: resharedPost?.canPostComments || null,\n  reshared_can_share: resharedPost?.canShare || null,\n  reshared_commenting_disabled: resharedPost?.commentingDisabled || null,\n  reshared_allowed_commenters_scope: resharedPost?.allowedCommentersScope || null,\n  reshared_root_share: resharedPost?.rootShare || null,\n  reshared_share_audience: resharedPost?.shareAudience || null,\n  \n  // Reshared post timestamp\n  reshared_posted_at_timestamp: resharedPost?.postedAtTimestamp || null,\n  reshared_posted_at_iso: resharedPost?.postedAtISO || null,\n  \n  // Reshared post author information\n  reshared_author_id: resharedPost?.author?.id || null,\n  reshared_author_profile_id: resharedPost?.authorProfileId || null,\n  reshared_author_public_id: resharedPost?.author?.publicId || null,\n  reshared_author_first_name: resharedPost?.author?.firstName || null,\n  reshared_author_last_name: resharedPost?.author?.lastName || null,\n  reshared_author_full_name: resharedPost?.authorName || null,\n  reshared_author_headline: resharedPost?.authorHeadline || null,\n  reshared_author_occupation: resharedPost?.author?.occupation || null,\n  reshared_author_profile_url: resharedPost?.authorProfileUrl || null,\n  reshared_author_profile_picture: resharedPost?.authorProfilePicture || null,\n  reshared_author_urn: resharedPost?.authorUrn || null,\n  reshared_author_type: resharedPost?.authorType || null,\n  reshared_author_followers_count: resharedPost?.authorFollowersCount || null,\n  \n  // Reshared post engagement details (as JSON)\n  reshared_reactions: resharedPost?.reactions ? JSON.stringify(resharedPost.reactions) : null,\n  reshared_comments: resharedPost?.comments ? JSON.stringify(resharedPost.comments) : null,\n  reshared_attributes: resharedPost?.attributes ? JSON.stringify(resharedPost.attributes) : null,\n  \n  // ============================================\n  // METADATA\n  // ============================================\n  scraped_at: new Date().toISOString(),\n  raw_data: JSON.stringify(data)\n};"
+      },
+      "id": "1a32083b-5914-46d0-a413-4356826e62b6",
+      "name": "Code - Transform REPOST",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        -368
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "tableId": "100_linkedin_posts",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "executive_id",
+              "fieldValue": "={{ $json.original_record_id }}"
+            },
+            {
+              "fieldId": "company_number",
+              "fieldValue": "={{ $json.company_number }}"
+            },
+            {
+              "fieldId": "company_name",
+              "fieldValue": "={{ $json.company_name }}"
+            },
+            {
+              "fieldId": "type",
+              "fieldValue": "={{ $json.executive_type }}"
+            },
+            {
+              "fieldId": "full_name",
+              "fieldValue": "={{ $json.full_name }}"
+            },
+            {
+              "fieldId": "url_website_source",
+              "fieldValue": "={{ $json.website_source }}"
+            },
+            {
+              "fieldId": "linkedinUrl",
+              "fieldValue": "={{ $json.linkedin_url }}"
+            },
+            {
+              "fieldId": "postedAtISO",
+              "fieldValue": "={{ $json.posted_at_iso }}"
+            },
+            {
+              "fieldId": "text",
+              "fieldValue": "={{ $json.post_text }}"
+            },
+            {
+              "fieldId": "_runDate",
+              "fieldValue": "={{ $json.scraped_at }}"
+            },
+            {
+              "fieldId": "resharedPost",
+              "fieldValue": "={{ $json.reshared_post_text }}"
+            }
+          ]
+        }
+      },
+      "id": "ac18ea3e-9c82-49c3-a098-ef55c0b75a65",
+      "name": "Supabase - Insert 100 Posts",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        704,
+        -368
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "90e0ecdc-2881-4a7a-8617-e0aa76af06ab",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        352,
+        -576
+      ],
+      "id": "f4465e57-957d-4460-be34-1a5094dc6cca",
+      "name": "If No Posts Published"
+    },
+    {
+      "parameters": {
+        "chatId": "8467886757",
+        "text": "LinkedIn 100 POSTS scraping workflow completed successfully!  All POSTS have been processed and inserted into Supabase.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -160,
+        -304
+      ],
+      "id": "cc1eebc6-1540-4b80-aeea-4342b7d75a25",
+      "name": "Send a text message",
+      "webhookId": "ccb389fa-d24f-4b12-ad86-0f0bc83e3119",
+      "credentials": {
+        "telegramApi": {
+          "id": "o08hb9RGQbIKErXK",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -48,
+        -576
+      ],
+      "id": "518576fd-923c-4eed-959f-93a64782d321",
+      "name": "Wait2",
+      "webhookId": "c829fc17-502a-496b-a8d5-e2316c3cb27e"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        -304
+      ],
+      "id": "129af11e-c3c2-48d6-ba1a-764ca4add8b7",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "content": "SEND A MESSAGE WHEN IS FINISHED",
+        "height": 208,
+        "width": 592,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -496,
+        -368
+      ],
+      "typeVersion": 1,
+      "id": "4e43f3bc-1e22-4837-b547-29569bb6bd45",
+      "name": "Sticky Note3"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Get Unprocessed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Get Unprocessed": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Mark Processed (Success)": {
+      "main": [
+        [
+          {
+            "node": "Loop Back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Back": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Run an Actor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run an Actor": {
+      "main": [
+        [
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get dataset items": {
+      "main": [
+        [
+          {
+            "node": "If No Posts Published",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Transform REPOST": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Insert 100 Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Insert 100 Posts": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Mark Processed (Success)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "If No Posts Published": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Mark Processed (Success)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Transform REPOST",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait2": {
+      "main": [
+        [
+          {
+            "node": "Get dataset items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        []
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {
+    "Manual Trigger": [
+      {
+        "json": {
+          "id": 572,
+          "company_number": 26,
+          "company_name": "Convatec Group PLC",
+          "type": "top_management",
+          "full name": "Anne Belcher",
+          "role": "President & Chief Operating Officer, Global Emerging Markets",
+          "url_website_source": "https://www.convatecgroup.com/about-us/convatec-executive-leadership-team/",
+          "linkedin_url": "https://www.linkedin.com/in/anne-belcher/",
+          "processed": true,
+          "tmt_profile_processed": false,
+          "100posts_processed": false
+        }
+      }
+    ]
+  },
+  "versionId": "68b8d334-3bdc-4717-a5c3-ee08e8628744",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-10-16T13:41:18.487Z",
+      "createdAt": "2025-10-16T13:41:18.487Z",
+      "role": "workflow:owner",
+      "workflowId": "QfzqaKLyfmeJ3wIp",
+      "projectId": "yy9eTOMcWs4nkB5T"
+    }
+  ],
+  "tags": []
+}
