@@ -1,0 +1,148 @@
+{
+  "updatedAt": "2025-11-29T19:13:09.000Z",
+  "createdAt": "2025-11-29T17:39:41.528Z",
+  "id": "vOBLYxMBdRJL3zZo",
+  "name": "My workflow 2",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -704,
+        -208
+      ],
+      "id": "81618025-b42f-4a98-b939-b19dc997c096",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "filters": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        -496,
+        -208
+      ],
+      "id": "175da4ac-d5f6-44ba-ba5c-a83e30129afa",
+      "name": "Get many workflows",
+      "credentials": {
+        "n8nApi": {
+          "id": "lzAirYTvuhXwOGzH",
+          "name": "n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Para cada workflow, prepara um item para o GitHub salvar\nreturn items.map(item => {\n  const workflow = item.json;\n  return {\n    json: {\n      path: `workflows/${workflow.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`, // Limpa o nome para não dar erro\n      content: JSON.stringify(workflow, null, 2), // Formata o JSON bonito\n      message: `Backup auto: ${workflow.name} - ${new Date().toISOString()}`\n    }\n  }\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        -208
+      ],
+      "id": "a5a4b81f-9726-459a-a4d7-9d4dfafa564e",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "owner": {
+          "__rl": true,
+          "value": "schereroz",
+          "mode": "name"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "backup-n8n-workflows",
+          "mode": "name"
+        },
+        "filePath": "={{ $json.path }}",
+        "fileContent": "={{ $json.content }}",
+        "commitMessage": "={{ $json.message }}"
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        -80,
+        -208
+      ],
+      "id": "089e7c24-5e66-4fb1-be6a-78b9aa5b6288",
+      "name": "Create a file",
+      "webhookId": "a2c55f16-582e-4f8c-ba1d-99049e67a01b",
+      "credentials": {
+        "githubApi": {
+          "id": "XxK9w4IhagYATaOK",
+          "name": "GitHub account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get many workflows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many workflows": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "3e478fa9-84fc-482b-8f79-1e1d16a17b70",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-11-29T17:39:41.539Z",
+      "createdAt": "2025-11-29T17:39:41.539Z",
+      "role": "workflow:owner",
+      "workflowId": "vOBLYxMBdRJL3zZo",
+      "projectId": "yy9eTOMcWs4nkB5T"
+    }
+  ],
+  "tags": []
+}
