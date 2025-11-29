@@ -1,0 +1,1245 @@
+{
+  "updatedAt": "2025-10-14T14:02:01.000Z",
+  "createdAt": "2025-10-12T02:31:59.269Z",
+  "id": "USIVy5R6XcQBO6h1",
+  "name": "Extract UK Executives with Firecrawl",
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "link_sources",
+        "limit": 5
+      },
+      "id": "5db120ac-157c-4254-b94f-a552f9dcb8c7",
+      "name": "Get Companies from Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -2112,
+        -112
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "url",
+              "name": "url",
+              "value": "={{ $json.boardUrl }}",
+              "type": "string"
+            },
+            {
+              "id": "company_data",
+              "name": "company_data",
+              "value": "={{ { number: $json['#'], name: $json.company_name, board_url: $json.board_member_link, management_url: $json.top_management_link } }}",
+              "type": "object"
+            },
+            {
+              "id": "extraction_type",
+              "name": "extraction_type",
+              "value": "board",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a55ba063-acc2-4059-9ac9-7552158e3ac4",
+      "name": "Prepare Board Extract",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1664,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "url",
+              "name": "url",
+              "value": "={{ $json.top_management_link }}",
+              "type": "string"
+            },
+            {
+              "id": "company_data",
+              "name": "company_data",
+              "value": "={{ { number: $json['#'], name: $json.company_name, board_url: $json.board_member_link, management_url: $json.top_management_link } }}",
+              "type": "object"
+            },
+            {
+              "id": "extraction_type",
+              "name": "extraction_type",
+              "value": "management",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9a64be59-a741-48e2-9d6c-89a3018067ce",
+      "name": "Prepare Management Extract",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1712,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.firecrawl.dev/v1/extract",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"urls\": [\"{{$json.url  }}\"],\n  \"prompt\": \"Extract all board of directors information. For each person, extract their COMPLETE FULL NAME (first name, middle name if any, and last name including any titles like OBE, FREng, etc.) and their job title/position. Return as: fullName (complete name with all parts), title (their position/role). Be sure to include the entire name as written on the page, not just the first name.\"\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "bcb4884f-ea33-4bd4-8a46-db58950b7a5e",
+      "name": "Firecrawl Extract - Board",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1440,
+        -496
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KT3q4YLLWiIqM1fj",
+          "name": "Header Auth account 3"
+        },
+        "firecrawlApi": {
+          "id": "XgAVUiMfrML7zjVX",
+          "name": "Firecrawl account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/extract",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"urls\": [\"{{$json.url  }}\"],\n  \"prompt\": \"Extract all executive leadership team information. For each person, extract their COMPLETE FULL NAME (first name, middle name if any, and last name including any credentials) and their job title/position. Return as: fullName (complete name), title (position). Include the entire name as it appears on the page.\"\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "d6412942-94b0-4634-ad4e-8b7d9fbca4dd",
+      "name": "Firecrawl Extract - Management",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1440,
+        304
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KT3q4YLLWiIqM1fj",
+          "name": "Header Auth account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.firecrawl.dev/v1/extract/{{ $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "c6a4823f-7cdb-4c4e-988d-703917cccd96",
+      "name": "Get Firecrawl Result - Board",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1008,
+        -528
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KT3q4YLLWiIqM1fj",
+          "name": "Header Auth account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.firecrawl.dev/v1/extract/{{ $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "ac77bf3c-ba17-48dd-9f99-63572aeadc96",
+      "name": "Get Firecrawl Result - Management",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1008,
+        320
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KT3q4YLLWiIqM1fj",
+          "name": "Header Auth account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "status-check",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f936d4d9-8808-4f27-838c-831f12c66092",
+      "name": "Check if Ready - Management",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -784,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "id": "4287f263-0f02-4115-a15e-dc2435c484fd",
+      "name": "Wait 15s More - Management",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -528,
+        304
+      ],
+      "webhookId": "babd3a76-7bd8-446d-997e-dd3283a29a09"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Busca os dados da empresa\nconst prepareData = $('Prepare Board Extract').first().json;\nconst companyData = prepareData.company_data;\n\n// Busca o company_number do Supabase\nconst supabaseData = $('Loop Over Companies').first().json;\nconst companyNumber = supabaseData?.number || supabaseData?.company_number || 'N/A';\n\n// Busca os dados extraídos do Firecrawl\nconst extractionData = $input.first().json.data;\n\nconsole.log('=== DEBUG EXTRACTION DATA ===');\nconsole.log('Keys do extractionData:', Object.keys(extractionData || {}));\n\n// CORREÇÃO: Os dados vêm em \"boardOfDirectors\" (não \"boardMembers\")\nlet boardMembers = [];\n\n// Tenta todos os formatos possíveis\nif (extractionData?.boardOfDirectors) {\n  // ✅ FORMATO CORRETO - boardOfDirectors\n  const directors = extractionData.boardOfDirectors;\n  \n  // Converte de objeto {0: {...}, 1: {...}} para array\n  if (Array.isArray(directors)) {\n    boardMembers = directors;\n  } else if (typeof directors === 'object') {\n    boardMembers = Object.values(directors);\n  }\n} else if (extractionData?.boardMembers) {\n  // Formato alternativo\n  boardMembers = extractionData.boardMembers;\n} else if (Array.isArray(extractionData)) {\n  // Se vier como array direto\n  boardMembers = extractionData;\n}\n\n// Filtra apenas objetos válidos\nboardMembers = boardMembers.filter(member => \n  member && \n  typeof member === 'object' && \n  member.fullName && \n  member.title\n);\n\nconsole.log('=== MEMBROS ENCONTRADOS ===');\nconsole.log('Total:', boardMembers.length);\nconsole.log('Membros:', JSON.stringify(boardMembers, null, 2));\n\n// Se não houver membros, retorna array vazio\nif (boardMembers.length === 0) {\n  console.log('⚠️ Nenhum membro encontrado!');\n  console.log('ExtractionData:', JSON.stringify(extractionData, null, 2));\n  return [];\n}\n\n// Mapeia cada membro do board\nreturn boardMembers.map(member => ({\n  json: {\n    company_number: companyNumber,\n    company_name: companyData.name,\n    type: 'board_member',\n    full_name: member.fullName,\n    role: member.title,\n    url_website_source: companyData.board_url\n  }\n}));"
+      },
+      "id": "51e51d54-80f2-4c4a-aed5-ef1adcbc84b8",
+      "name": "Format Board Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Busca os dados da empresa do node \"Prepare Management Extract\"\nconst prepareData = $('Prepare Management Extract').first().json;\nconst companyData = prepareData.company_data;\n\n// Busca o company_number do Supabase (do loop)\nconst supabaseData = $('Loop Over Companies').first().json;\nconst companyNumber = supabaseData?.number || supabaseData?.company_number || 'N/A';\n\n// Busca os dados extraídos do Firecrawl\nconst extractionData = $input.first().json.data;\n\n// CORREÇÃO: Tentar todas as possíveis variações do campo\nconst managementMembers = extractionData?.executiveLeadershipTeam || \n                          extractionData?.executiveLeadership || \n                          extractionData?.managementTeam || \n                          extractionData?.executives || \n                          [];\n\n// Log para debug\nconsole.log('Extraction Data keys:', Object.keys(extractionData || {}));\nconsole.log('Management Members encontrados:', managementMembers.length);\nconsole.log('Membros:', JSON.stringify(managementMembers, null, 2));\n\n// Se não houver membros, retorna array vazio\nif (managementMembers.length === 0) {\n  console.log('Nenhum membro encontrado!');\n  return [];\n}\n\n// Mapeia cada membro do management\n// Filtra membros que não têm fullName válido\nreturn managementMembers\n  .filter(member => member.fullName && member.fullName.trim().length > 0)\n  .map(member => ({\n    json: {\n      company_number: companyNumber,\n      company_name: companyData.name,\n      type: 'management_member',\n      full_name: member.fullName,\n      role: member.title,\n      url_website_source: companyData.management_url\n    }\n  }));"
+      },
+      "id": "7ae04a0b-60db-4e11-8578-f79974dc79c1",
+      "name": "Format Management Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "executives_n8n",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "company_number",
+              "fieldValue": "={{ $json.company_number }}"
+            },
+            {
+              "fieldId": "company_name",
+              "fieldValue": "={{ $json.company_name }}"
+            },
+            {
+              "fieldId": "type",
+              "fieldValue": "={{ $json.type }}"
+            },
+            {
+              "fieldId": "full_name",
+              "fieldValue": "={{ $json.full_name }}"
+            },
+            {
+              "fieldId": "role",
+              "fieldValue": "={{ $json.role }}"
+            },
+            {
+              "fieldId": "url_website_source",
+              "fieldValue": "={{ $json.url_website_source }}"
+            }
+          ]
+        }
+      },
+      "id": "b32335d9-c656-4e14-8d43-0a35192efd05",
+      "name": "Insert into Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        96,
+        -112
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "8340633f-7e63-4803-b08a-b44931ea7115",
+      "name": "Wait Before Next Company",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        320,
+        -112
+      ],
+      "webhookId": "8c3cf236-4fe2-4286-94e3-b595ba56d724"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "id": "5a4ac408-6fdb-4e1c-a011-238f65dc7ebe",
+      "name": "Wait 30s More - Board",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -560,
+        -528
+      ],
+      "webhookId": "13a7d47e-5712-413e-bb1c-c5e316b29320"
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "id": "feaa8ef1-e339-4f76-b67f-0c5a8e9cf9bb",
+      "name": "Wait 20s - Board",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1232,
+        -224
+      ],
+      "webhookId": "b2ee9965-e166-436d-9bf4-765d392aa5d2"
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "id": "910e785f-f62c-48fb-8cde-5c67c1efe474",
+      "name": "Wait 20s - Management",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1216,
+        144
+      ],
+      "webhookId": "0276bc4c-9403-4c45-88f9-c49c09498c18"
+    },
+    {
+      "parameters": {
+        "content": "STEP: EXTRACT BOARD MEMBERS AND TOP MANAGEMENT TEAM FROM THEIR COMPANIES WEBSITES\n\nINPUT: COMPANIES' URLS WHERE BOARD MEMBERS AND TOP MANAGEMENT NAMES ARE INFORMED.\n\nOUTPUT: LIST OF BM AND TMT NAMES.\n\nNEXT STEP: FIND THE LINKEDIN PROFILE URLS OF EACH BM AND TMT.",
+        "height": 224,
+        "width": 640
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2448,
+        -432
+      ],
+      "typeVersion": 1,
+      "id": "8e22df01-6af1-4f15-8273-2f2e8ce7c8a4",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2352,
+        -112
+      ],
+      "id": "6e5cc18c-13b7-4be5-98bf-ab1b98ccd60d",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "link_sources",
+        "returnAll": true
+      },
+      "id": "ae39e1c5-6d56-4d9b-9dde-d48d86b410cc",
+      "name": "Get Companies from Supabase1",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -2240,
+        1184
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "61066876-e858-4b62-9db8-4d654cf3e9a3",
+      "name": "Loop Over Companies1",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -2016,
+        1184
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "url",
+              "name": "url",
+              "value": "={{ $json.board_member_link }}",
+              "type": "string"
+            },
+            {
+              "id": "company_data",
+              "name": "company_data",
+              "value": "={{ { number: $json['#'], name: $json.company_name, board_url: $json.board_member_link, management_url: $json.top_management_link } }}",
+              "type": "object"
+            },
+            {
+              "id": "extraction_type",
+              "name": "extraction_type",
+              "value": "board",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5d2c0ed1-49b2-4470-a449-ef59f0655c51",
+      "name": "Prepare Board Extract1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1792,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "url",
+              "name": "url",
+              "value": "={{ $json.top_management_link }}",
+              "type": "string"
+            },
+            {
+              "id": "company_data",
+              "name": "company_data",
+              "value": "={{ { number: $json['#'], name: $json.company_name, board_url: $json.board_member_link, management_url: $json.top_management_link } }}",
+              "type": "object"
+            },
+            {
+              "id": "extraction_type",
+              "name": "extraction_type",
+              "value": "management",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "02e71a21-7c57-4277-ba29-5c4a609c9484",
+      "name": "Prepare Management Extract1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1840,
+        1472
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.firecrawl.dev/v1/scrape",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $json.board_url }}\",\n  \"formats\": [\"markdown\"]\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "9cc48f0e-f111-42e3-91a0-03c146f7bd77",
+      "name": "Firecrawl Extract - Board1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1568,
+        800
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KT3q4YLLWiIqM1fj",
+          "name": "Header Auth account 3"
+        },
+        "firecrawlApi": {
+          "id": "XgAVUiMfrML7zjVX",
+          "name": "Firecrawl account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/scrape",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $json.board_url }}\",\n  \"formats\": [\"markdown\"]\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "362d4a44-198a-44f3-87b1-a048a42eac38",
+      "name": "Firecrawl Extract - Management1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1568,
+        1600
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KT3q4YLLWiIqM1fj",
+          "name": "Header Auth account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.firecrawl.dev/v1/extract/{{ $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "0833c91c-c6b7-4b1d-87b0-741e032b7a7d",
+      "name": "Get Firecrawl Result - Board1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1136,
+        768
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KT3q4YLLWiIqM1fj",
+          "name": "Header Auth account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.firecrawl.dev/v1/extract/{{ $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "b5a2d099-0d7c-45e1-972c-6c7ae4280c28",
+      "name": "Get Firecrawl Result - Management1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1136,
+        1616
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KT3q4YLLWiIqM1fj",
+          "name": "Header Auth account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "status-check",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "82dc8505-9ab7-478b-875a-8819aacc3264",
+      "name": "Check if Ready - Board1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -912,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "status-check",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a011125c-db2a-476d-8fad-b95177e6ebec",
+      "name": "Check if Ready - Management1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -912,
+        1440
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "id": "0bcd854c-3722-4f9d-a3c8-94077ddc24e9",
+      "name": "Wait 15s More - Management1",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -656,
+        1600
+      ],
+      "webhookId": "babd3a76-7bd8-446d-997e-dd3283a29a09"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Busca os dados da empresa\nconst prepareData = $('Prepare Board Extract1').first().json;\nconst companyData = prepareData.company_data;\n\n// Busca o company_number do Supabase\nconst supabaseData = $('Loop Over Companies1').first().json;\nconst companyNumber = supabaseData?.number || supabaseData?.company_number || 'N/A';\n\n// Busca os dados extraídos do Firecrawl\nconst extractionData = $input.first().json.data;\n\nconsole.log('=== DEBUG EXTRACTION DATA ===');\nconsole.log('Keys do extractionData:', Object.keys(extractionData || {}));\n\n// CORREÇÃO: Os dados vêm em \"boardOfDirectors\" (não \"boardMembers\")\nlet boardMembers = [];\n\n// Tenta todos os formatos possíveis\nif (extractionData?.boardOfDirectors) {\n  // ✅ FORMATO CORRETO - boardOfDirectors\n  const directors = extractionData.boardOfDirectors;\n  \n  // Converte de objeto {0: {...}, 1: {...}} para array\n  if (Array.isArray(directors)) {\n    boardMembers = directors;\n  } else if (typeof directors === 'object') {\n    boardMembers = Object.values(directors);\n  }\n} else if (extractionData?.boardMembers) {\n  // Formato alternativo\n  boardMembers = extractionData.boardMembers;\n} else if (Array.isArray(extractionData)) {\n  // Se vier como array direto\n  boardMembers = extractionData;\n}\n\n// Filtra apenas objetos válidos\nboardMembers = boardMembers.filter(member => \n  member && \n  typeof member === 'object' && \n  member.fullName && \n  member.title\n);\n\nconsole.log('=== MEMBROS ENCONTRADOS ===');\nconsole.log('Total:', boardMembers.length);\nconsole.log('Membros:', JSON.stringify(boardMembers, null, 2));\n\n// Se não houver membros, retorna array vazio\nif (boardMembers.length === 0) {\n  console.log('⚠️ Nenhum membro encontrado!');\n  console.log('ExtractionData:', JSON.stringify(extractionData, null, 2));\n  return [];\n}\n\n// Mapeia cada membro do board\nreturn boardMembers.map(member => ({\n  json: {\n    company_number: companyNumber,\n    company_name: companyData.name,\n    type: 'board_member',\n    full_name: member.fullName,\n    role: member.title,\n    url_website_source: companyData.board_url\n  }\n}));"
+      },
+      "id": "f6439f39-593a-4083-ac63-1a6509ded308",
+      "name": "Format Board Results1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Busca os dados da empresa do node \"Prepare Management Extract\"\nconst prepareData = $('Prepare Management Extract1').first().json;\nconst companyData = prepareData.company_data;\n\n// Busca o company_number do Supabase (do loop)\nconst supabaseData = $('Loop Over Companies1').first().json;\nconst companyNumber = supabaseData?.number || supabaseData?.company_number || 'N/A';\n\n// Busca os dados extraídos do Firecrawl\nconst extractionData = $input.first().json.data;\n\n// CORREÇÃO: Tentar todas as possíveis variações do campo\nconst managementMembers = extractionData?.executiveLeadershipTeam || \n                          extractionData?.executiveLeadership || \n                          extractionData?.managementTeam || \n                          extractionData?.executives || \n                          [];\n\n// Log para debug\nconsole.log('Extraction Data keys:', Object.keys(extractionData || {}));\nconsole.log('Management Members encontrados:', managementMembers.length);\nconsole.log('Membros:', JSON.stringify(managementMembers, null, 2));\n\n// Se não houver membros, retorna array vazio\nif (managementMembers.length === 0) {\n  console.log('Nenhum membro encontrado!');\n  return [];\n}\n\n// Mapeia cada membro do management\n// Filtra membros que não têm fullName válido\nreturn managementMembers\n  .filter(member => member.fullName && member.fullName.trim().length > 0)\n  .map(member => ({\n    json: {\n      company_number: companyNumber,\n      company_name: companyData.name,\n      type: 'management_member',\n      full_name: member.fullName,\n      role: member.title,\n      url_website_source: companyData.management_url\n    }\n  }));"
+      },
+      "id": "b32c018d-401c-422d-a63a-2018b6149ea4",
+      "name": "Format Management Results1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        1424
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "executives_n8n",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "company_number",
+              "fieldValue": "={{ $json.company_number }}"
+            },
+            {
+              "fieldId": "company_name",
+              "fieldValue": "={{ $json.company_name }}"
+            },
+            {
+              "fieldId": "type",
+              "fieldValue": "={{ $json.type }}"
+            },
+            {
+              "fieldId": "full_name",
+              "fieldValue": "={{ $json.full_name }}"
+            },
+            {
+              "fieldId": "role",
+              "fieldValue": "={{ $json.role }}"
+            },
+            {
+              "fieldId": "url_website_source",
+              "fieldValue": "={{ $json.url_website_source }}"
+            }
+          ]
+        }
+      },
+      "id": "6323dc65-7c6f-43de-9415-98f1c60f3547",
+      "name": "Insert into Supabase1",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        1184
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "f8689111-8e16-4b1d-b2e6-96a12eb0e586",
+      "name": "Wait Before Next Company1",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        192,
+        1184
+      ],
+      "webhookId": "8c3cf236-4fe2-4286-94e3-b595ba56d724"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "id": "c3f09686-c7fd-4b6a-997d-e53e650feb2d",
+      "name": "Wait 30s More - Board1",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -688,
+        768
+      ],
+      "webhookId": "13a7d47e-5712-413e-bb1c-c5e316b29320"
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "id": "839aa1eb-2dbc-42c3-9d6a-d9ed9408a126",
+      "name": "Wait 20s - Board1",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1360,
+        1072
+      ],
+      "webhookId": "b2ee9965-e166-436d-9bf4-765d392aa5d2"
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "id": "d51c5e2b-6274-4bcf-bcc0-d0e417a8b6e6",
+      "name": "Wait 20s - Management1",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1344,
+        1440
+      ],
+      "webhookId": "0276bc4c-9403-4c45-88f9-c49c09498c18"
+    },
+    {
+      "parameters": {
+        "content": "STEP: EXTRACT BOARD MEMBERS AND TOP MANAGEMENT TEAM FROM THEIR COMPANIES WEBSITES\n\nINPUT: COMPANIES' URLS WHERE BOARD MEMBERS AND TOP MANAGEMENT NAMES ARE INFORMED.\n\nOUTPUT: LIST OF BM AND TMT NAMES.\n\nNEXT STEP: FIND THE LINKEDIN PROFILE URLS OF EACH BM AND TMT.",
+        "height": 224,
+        "width": 640
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2496,
+        768
+      ],
+      "typeVersion": 1,
+      "id": "113b7c7b-7ca3-4b8e-a785-85e0a69e2a56",
+      "name": "Sticky Note1"
+    }
+  ],
+  "connections": {
+    "Get Companies from Supabase": {
+      "main": [
+        [
+          {
+            "node": "Prepare Board Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Board Extract": {
+      "main": [
+        [
+          {
+            "node": "Firecrawl Extract - Board",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Management Extract": {
+      "main": [
+        [
+          {
+            "node": "Firecrawl Extract - Management",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firecrawl Extract - Board": {
+      "main": [
+        [
+          {
+            "node": "Wait 20s - Board",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firecrawl Extract - Management": {
+      "main": [
+        [
+          {
+            "node": "Wait 20s - Management",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Firecrawl Result - Board": {
+      "main": [
+        [
+          {
+            "node": "Format Board Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Firecrawl Result - Management": {
+      "main": [
+        [
+          {
+            "node": "Check if Ready - Management",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Ready - Management": {
+      "main": [
+        [
+          {
+            "node": "Format Management Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 15s More - Management",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 15s More - Management": {
+      "main": [
+        [
+          {
+            "node": "Get Firecrawl Result - Management",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Board Results": {
+      "main": [
+        [
+          {
+            "node": "Insert into Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Management Results": {
+      "main": [
+        []
+      ]
+    },
+    "Insert into Supabase": {
+      "main": [
+        [
+          {
+            "node": "Wait Before Next Company",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Before Next Company": {
+      "main": [
+        [
+          {
+            "node": "Prepare Board Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 30s More - Board": {
+      "main": [
+        []
+      ]
+    },
+    "Wait 20s - Board": {
+      "main": [
+        [
+          {
+            "node": "Get Firecrawl Result - Board",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 20s - Management": {
+      "main": [
+        [
+          {
+            "node": "Get Firecrawl Result - Management",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get Companies from Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Companies from Supabase1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Companies1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Companies1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Prepare Board Extract1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Board Extract1": {
+      "main": [
+        [
+          {
+            "node": "Firecrawl Extract - Board1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Management Extract1": {
+      "main": [
+        [
+          {
+            "node": "Firecrawl Extract - Management1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firecrawl Extract - Board1": {
+      "main": [
+        [
+          {
+            "node": "Wait 20s - Board1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firecrawl Extract - Management1": {
+      "main": [
+        [
+          {
+            "node": "Wait 20s - Management1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Firecrawl Result - Board1": {
+      "main": [
+        [
+          {
+            "node": "Check if Ready - Board1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Firecrawl Result - Management1": {
+      "main": [
+        [
+          {
+            "node": "Check if Ready - Management1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Ready - Board1": {
+      "main": [
+        [
+          {
+            "node": "Format Board Results1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 30s More - Board1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Ready - Management1": {
+      "main": [
+        [
+          {
+            "node": "Format Management Results1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 15s More - Management1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 15s More - Management1": {
+      "main": [
+        [
+          {
+            "node": "Get Firecrawl Result - Management1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Board Results1": {
+      "main": [
+        [
+          {
+            "node": "Insert into Supabase1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert into Supabase1": {
+      "main": [
+        [
+          {
+            "node": "Wait Before Next Company1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Before Next Company1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Companies1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 30s More - Board1": {
+      "main": [
+        [
+          {
+            "node": "Get Firecrawl Result - Board1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 20s - Board1": {
+      "main": [
+        [
+          {
+            "node": "Get Firecrawl Result - Board1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 20s - Management1": {
+      "main": [
+        [
+          {
+            "node": "Get Firecrawl Result - Management1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Schedule Trigger1": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "b7907bca-66d5-4de9-8474-cd5ce114ab1c",
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2025-10-12T02:31:59.275Z",
+      "createdAt": "2025-10-12T02:31:59.275Z",
+      "role": "workflow:owner",
+      "workflowId": "USIVy5R6XcQBO6h1",
+      "projectId": "yy9eTOMcWs4nkB5T"
+    }
+  ],
+  "tags": []
+}
