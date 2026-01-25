@@ -1,0 +1,545 @@
+{
+  "updatedAt": "2026-01-24T20:39:16.000Z",
+  "createdAt": "2026-01-24T14:52:30.240Z",
+  "id": "2KbVYJ6WvG2qtCyq",
+  "name": "K - Posts Analysis 2 (Advanced Strategy Framework)",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "assessment_posts",
+        "limit": 900,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "analyzed_at",
+              "condition": "is",
+              "keyValue": "Null"
+            },
+            {
+              "keyName": "text",
+              "condition": "neq",
+              "keyValue": "Null"
+            },
+            {
+              "keyName": "company_name_1",
+              "condition": "eq",
+              "keyValue": "Bristol Myers Squibb"
+            },
+            {
+              "keyName": "type_1_a",
+              "condition": "eq",
+              "keyValue": "team"
+            },
+            {
+              "keyName": "post_type",
+              "condition": "eq",
+              "keyValue": "article"
+            }
+          ]
+        }
+      },
+      "id": "02494ed2-9bb2-4428-b1ec-92a0502cc714",
+      "name": "Get Unanalyzed Posts",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -368,
+        16
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "341f72aa-254f-4343-a125-ec051afcf7fc",
+      "name": "Loop Posts",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -160,
+        16
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e445f10a-3385-48f1-8bcb-3cda90fa643a",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import re\nfrom datetime import datetime\n\n# --- LISTA DE TERMOS IA ---\nTERMS_IA = [\n    \"Agentic AI\", \"Agentic Workflows\", \"AI\", \"AI Act\", \"AI Accelerators\", \"AI Adoption\", \n    \"AI Agents\", \"AI Alignment\", \"AI Algorithms\", \"AI Assistants\", \"AI Audit\", \n    \"AI Benchmarks\", \"AI Capabilities\", \"AI Center of Excellence\", \"AI Chips\", \n    \"AI Companions\", \"AI Consciousness\", \"AI Ethics\", \"AI Governance\", \"AI Infrastructure\", \n    \"AI Inference\", \"AI Literacy\", \"AI Maturity\", \"AI Models\", \"AI PC\", \"AI Readiness\", \n    \"AI Regulation\", \"AI ROI\", \"AI Safety\", \"AI Stack\", \"AI Strategy\", \n    \"AI Superintelligence\", \"AI Talent\", \"AI Transformation\", \"AI Transparency\", \n    \"AI Upskilling\", \"AI Watermarking\", \"AI Workloads\", \"AI Workforce\", \"AI-First\", \n    \"AI-Native\", \"AI-Powered\", \"Algorithmic Bias\", \"Anthropic\", \n    \"Artificial General Intelligence\", \"Artificial Intelligence\", \"Attention Mechanism\", \n    \"Augmented Intelligence\", \"Automated Decision-Making\", \"Autonomous Agents\", \n    \"Chain of Thought\", \"ChatGPT\", \"Chief AI Officer\", \"Claude\", \"Cognitive Computing\", \n    \"Computer Vision\", \"Context Engineering\", \"Context Window\", \"Conversational AI\", \n    \"Copilot\", \"Data Labeling\", \"Decision Intelligence\", \"Deep Learning\", \"DeepMind\", \n    \"DeepSeek\", \"Diffusion Models\", \"Digital Twins\", \"Edge AI\", \"Embodied AI\", \n    \"Enterprise AI\", \"Explainable AI\", \"Fine-Tuning\", \"Foundation Models\", \n    \"Frontier Models\", \"Gemini\", \"Generative AI\", \"Grok\", \"GPU Clusters\", \n    \"Hallucinations\", \"Human-in-the-loop\", \"Hyper-personalization\", \n    \"Intelligent Automation\", \"Knowledge Graph\", \"Large Language Models\", \"Llama\", \n    \"LLM\", \"LLMOps\", \"Machine Learning\", \"Manus\", \"Mistral\", \"Mixture of Experts\", \n    \"MLOps\", \"Model Context Protocol\", \"Model Drift\", \"Model Training\", \n    \"Multi-Agent Systems\", \"Multimodal AI\", \"Natural Language Processing\", \n    \"Neural Networks\", \"On-Device AI\", \"Open Source AI\", \"OpenAI\", \"Perplexity\", \n    \"Predictive Analytics\", \"Prompt Engineering\", \"Quantization\", \"RAG\", \n    \"Reasoning Models\", \"Reinforcement Learning\", \"Responsible AI\", \n    \"Retrieval-Augmented Generation\", \"RLHF\", \"Semantic Search\", \"Shadow AI\", \n    \"Small Language Models\", \"Sovereign AI\", \"Synthetic Data\", \"Tensor Processing Unit\", \n    \"Transfer Learning\", \"Transformers\", \"Vector Database\", \"Vertical AI\", \n    \"Vision Language Models\", \"Voice AI\", \"Watsonx\"\n]\n\ndef extract_text(item):\n    text = item.json.get('text', '') or ''\n    reshared = item.json.get('resharedPost', '') or ''\n    combined = f\"{text} {reshared}\".strip()\n    return combined\n\ndef count_terms(text, term_list):\n    if not text: return [], 0\n    text_lower = text.lower()\n    found = []\n    total = 0\n    for term in term_list:\n        term_lower = term.lower()\n        # Regex \\b para evitar falsos positivos\n        pattern = r'\\b' + re.escape(term_lower) + r'\\b'\n        matches = len(re.findall(pattern, text_lower))\n        if matches > 0:\n            total += matches\n            found.append({\"term\": term, \"count\": matches})\n    return found, total\n\nitems = _input.all()\nresults = []\n\nfor item in items:\n    full_text = extract_text(item)\n    detected_terms, count = count_terms(full_text, TERMS_IA)\n    \n    results.append({\n        \"json\": {\n            \"post_id\": str(item.json.get('post_id')), # Garante string\n            \"full_text_for_analysis\": full_text[:25000], \n            \"ai_terms_count\": count,\n            \"detected_terms\": detected_terms,\n            \"has_ai_terms\": count > 0,\n            \"analyzed_at\": datetime.utcnow().isoformat()\n        }\n    })\n\nreturn results"
+      },
+      "id": "20e757b2-eb2d-4107-9dd3-3febb4c9f688",
+      "name": "Python - Extract Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "gpt-5-nano"
+            },
+            {
+              "name": "response_format",
+              "value": "={{ {\"type\": \"json_object\"} }}"
+            },
+            {
+              "name": "messages",
+              "value": "={{ [\n  {\n    \"role\": \"system\",\n    \"content\": \"You are a senior strategy analyst classifying LinkedIn posts for the AIDE Index. Your task is to classify the post strictly following the taxonomy below.\\n\\n## 1. PRIMARY CATEGORIES & SUBCATEGORIES (Select ONE pair):\\n- Business Strategy & Performance (Subcategories: Financial Performance | Market & Industry Trends | Partnerships & Collaborations | Geopolitics & Macroeconomics)\\n- Innovation & Future (Subcategories: Artificial Intelligence | R&D & Emerging Tech | Digital Transformation | Product & Service Launches)\\n- People & Culture (Subcategories: Leadership Philosophy | Corporate Culture | Talent & Future of Work | Diversity, Equity & Inclusion)\\n- Responsibility & External (Subcategories: ESG & Sustainability | Regulation & Public Policy | Cybersecurity & Data Privacy | Crisis Management)\\n- Customers & Brand (Subcategories: Customer Experience | Marketing Campaigns | Brand Positioning)\\n- Personal Content (Subcategories: Personal Reflections | Thought Leadership | Career Advice)\\n\\n## 2. SENTIMENT & SCORE (0-10 scale):\\n- Positive (6.5-10): Optimistic, celebratory\\n- Neutral (4.5-6.4): Factual, informative\\n- Negative (0-4.4): Critical, challenging\\n*Confidence (0-1): 0.9-1.0=very clear, 0.7-0.89=clear, 0.4-0.69=moderate, 0-0.39=unclear*\\n\\n## 3. COMMUNICATION STYLE:\\n- Tone (Select 1-3): inspirational, analytical, promotional, educational, celebratory, cautionary, conversational, formal, urgent, empathetic, authoritative, reflective.\\n- Emotions (Select 1-4): pride, excitement, optimism, gratitude, determination, concern, empathy, confidence, curiosity, urgency, disappointment, frustration, hope, caution.\\n- Intent (Select ONE): thought_leadership, brand_building, recruiting, crisis_communication, stakeholder_engagement, announcement, advocacy, education, networking.\\n- Audience (Select ONE): investors, customers, employees, industry_peers, general_public, regulators.\\n\\n## 4. STRATEGIC SIGNALS:\\n- Positioning (Select ONE): forward_looking, reactive, defensive, neutral, aggressive.\\n- Focus (Select ONE): internal, external, balanced.\\n- Leadership Stance (Select ONE): leading, following, observing, challenging, collaborative.\\n\\n## 5. AIDE ADVOCACY SCORE (0-100) - AI Specific:\\n- 0-20: Unrelated buzzwords or casual mention (Use this for posts NOT about AI).\\n- 21-50: Curator (Sharing news/articles without deep insight).\\n- 51-80: Promoter (Promoting company AI initiatives/events).\\n- 81-100: Thought Leader (Deep personal insight, visionary statement, or strong defense of strategy).\\n\\n## 6. DATA EXTRACTION RULES:\\n- themes_primary: Extract 1-3 main keywords.\\n- technologies_mentioned: Extract specific tech/platforms (e.g., Generative AI, Python).\\n\\nOUTPUT JSON FORMAT:\\n{\\n  \\\"primary_category\\\": \\\"String\\\",\\n  \\\"subcategory\\\": \\\"String\\\",\\n  \\\"sentiment_overall\\\": \\\"String\\\",\\n  \\\"sentiment_score\\\": Number,\\n  \\\"sentiment_confidence\\\": Number,\\n  \\\"tone\\\": [\\\"String\\\"],\\n  \\\"emotions\\\": [\\\"String\\\"],\\n  \\\"intent\\\": \\\"String\\\",\\n  \\\"audience\\\": \\\"String\\\",\\n  \\\"strategic_positioning\\\": \\\"String\\\",\\n  \\\"strategic_focus\\\": \\\"String\\\",\\n  \\\"leadership_stance\\\": \\\"String\\\",\\n  \\\"advocacy_score\\\": Number,\\n  \\\"technologies_mentioned\\\": [\\\"String\\\"]\\n}\"\n  },\n  {\n    \"role\": \"user\",\n    \"content\": $json.full_text_for_analysis\n  }\n] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "87520975-2781-42d7-90f2-3286e60b1137",
+      "name": "OpenAI API (All Posts)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        400,
+        32
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "mZ3zckH2SlfqcPPK",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "post_id",
+              "name": "post_id",
+              "value": "={{ $('Python - Extract Metadata').item.json.post_id }}",
+              "type": "string"
+            },
+            {
+              "id": "analyzed_at",
+              "name": "analyzed_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "primary_category",
+              "name": "primary_category",
+              "value": "={{ JSON.parse($json.choices[0].message.content).primary_category }}",
+              "type": "string"
+            },
+            {
+              "id": "subcategory",
+              "name": "subcategory",
+              "value": "={{ JSON.parse($json.choices[0].message.content).subcategory }}",
+              "type": "string"
+            },
+            {
+              "id": "ai_sentiment",
+              "name": "ai_sentiment",
+              "value": "={{ JSON.parse($json.choices[0].message.content).sentiment_overall }}",
+              "type": "string"
+            },
+            {
+              "id": "sentiment_score",
+              "name": "sentiment_score",
+              "value": "={{ JSON.parse($json.choices[0].message.content).sentiment_score }}",
+              "type": "number"
+            },
+            {
+              "id": "sentiment_confidence",
+              "name": "sentiment_confidence",
+              "value": "={{ JSON.parse($json.choices[0].message.content).sentiment_confidence }}",
+              "type": "number"
+            },
+            {
+              "id": "tone",
+              "name": "tone",
+              "value": "={{ JSON.parse($json.choices[0].message.content).tone }}",
+              "type": "array"
+            },
+            {
+              "id": "emotions",
+              "name": "emotions",
+              "value": "={{ JSON.parse($json.choices[0].message.content).emotions }}",
+              "type": "array"
+            },
+            {
+              "id": "intent",
+              "name": "intent",
+              "value": "={{ JSON.parse($json.choices[0].message.content).intent }}",
+              "type": "string"
+            },
+            {
+              "id": "audience_target",
+              "name": "audience_target",
+              "value": "={{ JSON.parse($json.choices[0].message.content).audience }}",
+              "type": "string"
+            },
+            {
+              "id": "strategic_positioning",
+              "name": "strategic_positioning",
+              "value": "={{ JSON.parse($json.choices[0].message.content).strategic_positioning }}",
+              "type": "string"
+            },
+            {
+              "id": "strategic_focus",
+              "name": "strategic_focus",
+              "value": "={{ JSON.parse($json.choices[0].message.content).strategic_focus }}",
+              "type": "string"
+            },
+            {
+              "id": "leadership_stance",
+              "name": "leadership_stance",
+              "value": "={{ JSON.parse($json.choices[0].message.content).leadership_stance }}",
+              "type": "string"
+            },
+            {
+              "id": "advocacy_score",
+              "name": "advocacy_score",
+              "value": "={{ JSON.parse($json.choices[0].message.content).advocacy_score }}",
+              "type": "number"
+            },
+            {
+              "id": "technologies_mentioned",
+              "name": "technologies_mentioned",
+              "value": "={{ JSON.parse($json.choices[0].message.content).technologies_mentioned }}",
+              "type": "array"
+            },
+            {
+              "id": "has_ai_terms",
+              "name": "has_ai_terms",
+              "value": "={{ $('Python - Extract Metadata').item.json.has_ai_terms }}",
+              "type": "boolean"
+            },
+            {
+              "id": "ai_terms_count",
+              "name": "ai_terms_count",
+              "value": "={{ $('Python - Extract Metadata').item.json.ai_terms_count }}",
+              "type": "number"
+            },
+            {
+              "id": "detected_terms",
+              "name": "detected_terms",
+              "value": "={{ $('Python - Extract Metadata').item.json.detected_terms }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2c27ef8c-eafb-4bf6-b75e-2d37bd26c4ba",
+      "name": "Prepare Data for DB1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        656,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "assessment_posts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "post_id",
+              "condition": "eq",
+              "keyValue": "={{ String($json.post_id) }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "primary_category",
+              "fieldValue": "={{ $json.primary_category }}"
+            },
+            {
+              "fieldId": "subcategory",
+              "fieldValue": "={{ $json.subcategory }}"
+            },
+            {
+              "fieldId": "sentiment_overall",
+              "fieldValue": "={{ $json.ai_sentiment }}"
+            },
+            {
+              "fieldId": "tone",
+              "fieldValue": "={{ $json.tone }}"
+            },
+            {
+              "fieldId": "emotions",
+              "fieldValue": "={{ $json.emotions }}"
+            },
+            {
+              "fieldId": "intent",
+              "fieldValue": "={{ $json.intent }}"
+            },
+            {
+              "fieldId": "audience_target",
+              "fieldValue": "={{ $json.audience_target }}"
+            },
+            {
+              "fieldId": "strategic_positioning",
+              "fieldValue": "={{ $json.strategic_positioning }}"
+            },
+            {
+              "fieldId": "strategic_focus",
+              "fieldValue": "={{ $json.strategic_focus }}"
+            },
+            {
+              "fieldId": "leadership_stance",
+              "fieldValue": "={{ $json.leadership_stance }}"
+            },
+            {
+              "fieldId": "advocacy_score",
+              "fieldValue": "={{ $json.advocacy_score }}"
+            },
+            {
+              "fieldId": "technologies_mentioned",
+              "fieldValue": "={{ $json.technologies_mentioned }}"
+            },
+            {
+              "fieldId": "has_ai_terms",
+              "fieldValue": "={{ $('Python - Extract Metadata').item.json.has_ai_terms }}"
+            },
+            {
+              "fieldId": "ai_terms_count",
+              "fieldValue": "={{ $('Python - Extract Metadata').item.json.ai_terms_count }}"
+            },
+            {
+              "fieldId": "detected_terms",
+              "fieldValue": "={{ $('Python - Extract Metadata').item.json.detected_terms }}"
+            },
+            {
+              "fieldId": "analyzed_at",
+              "fieldValue": "={{ $json.analyzed_at }}"
+            },
+            {
+              "fieldId": "sentiment_score",
+              "fieldValue": "={{ $json.sentiment_score }}"
+            },
+            {
+              "fieldId": "sentiment_confidence",
+              "fieldValue": "={{ $json.sentiment_confidence }}"
+            }
+          ]
+        }
+      },
+      "id": "39872bf0-b07c-4e22-8cb9-3f532e791ac4",
+      "name": "Update (With Score)2",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        928,
+        32
+      ],
+      "alwaysOutputData": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "muhyIkmC96gSHUut",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1136,
+        32
+      ],
+      "id": "446dcaa6-04a0-467e-8a87-1863dd22eee4",
+      "name": "Wait",
+      "webhookId": "f75241e4-8d76-45d1-80f1-859eccb8a086"
+    },
+    {
+      "parameters": {
+        "content": "## STEP 11 - ANALYZE POSTS\n**Get posts from Supabase",
+        "height": 496,
+        "width": 624
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -608,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "ad7bee25-86a9-4a33-9ba3-54069f7966e3",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "Analyze terms using Python and sentiment using OpenAI",
+        "height": 496,
+        "width": 560,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        32,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "42239342-886c-4a2b-8777-fe910b9d5f2a",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Save analysis to database - Supabase",
+        "height": 496,
+        "width": 688
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        608,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "db7eead0-397d-43cf-a5f4-21edba1dd719",
+      "name": "Sticky Note2"
+    }
+  ],
+  "connections": {
+    "Get Unanalyzed Posts": {
+      "main": [
+        [
+          {
+            "node": "Loop Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Posts": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Python - Extract Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Unanalyzed Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Python - Extract Metadata": {
+      "main": [
+        [
+          {
+            "node": "OpenAI API (All Posts)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI API (All Posts)": {
+      "main": [
+        [
+          {
+            "node": "Prepare Data for DB1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Data for DB1": {
+      "main": [
+        [
+          {
+            "node": "Update (With Score)2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update (With Score)2": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "71220a86-bbe8-4614-a866-9f175abdcf4b",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2026-01-24T14:52:30.258Z",
+      "createdAt": "2026-01-24T14:52:30.258Z",
+      "role": "workflow:owner",
+      "workflowId": "2KbVYJ6WvG2qtCyq",
+      "projectId": "yy9eTOMcWs4nkB5T"
+    }
+  ],
+  "tags": []
+}
