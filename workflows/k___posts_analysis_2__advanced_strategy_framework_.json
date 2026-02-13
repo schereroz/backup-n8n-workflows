@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-01-24T20:39:16.000Z",
+  "updatedAt": "2026-02-12T20:55:34.000Z",
   "createdAt": "2026-01-24T14:52:30.240Z",
   "id": "2KbVYJ6WvG2qtCyq",
   "name": "K - Posts Analysis 2 (Advanced Strategy Framework)",
@@ -25,19 +25,14 @@
               "keyValue": "Null"
             },
             {
+              "keyName": "retail",
+              "condition": "is",
+              "keyValue": "True"
+            },
+            {
               "keyName": "company_name_1",
               "condition": "eq",
-              "keyValue": "Bristol Myers Squibb"
-            },
-            {
-              "keyName": "type_1_a",
-              "condition": "eq",
-              "keyValue": "team"
-            },
-            {
-              "keyName": "post_type",
-              "condition": "eq",
-              "keyValue": "article"
+              "keyValue": "Kroger"
             }
           ]
         }
@@ -128,6 +123,7 @@
         400,
         32
       ],
+      "retryOnFail": true,
       "credentials": {
         "openAiApi": {
           "id": "mZ3zckH2SlfqcPPK",
@@ -530,7 +526,7 @@
   "staticData": null,
   "meta": null,
   "pinData": {},
-  "versionId": "71220a86-bbe8-4614-a866-9f175abdcf4b",
+  "versionId": "f6adb45e-911b-427e-bcbc-09e77ac1bdd8",
   "triggerCount": 0,
   "shared": [
     {
